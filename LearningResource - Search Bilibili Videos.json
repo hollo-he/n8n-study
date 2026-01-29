@@ -1,0 +1,1229 @@
+{
+  "name": "LearningResource - Search Bilibili Videos",
+  "nodes": [
+    {
+      "parameters": {
+        "batchSize": 3,
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        -176
+      ],
+      "id": "ac57678f-08b7-401e-b751-1d8db01a0cfa",
+      "name": "ItemBatchLooper"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/api/v1/learning-resource/bilibili-videos/search",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        -464
+      ],
+      "id": "e9e14a9a-725c-48be-bd17-5292e8bf3427",
+      "name": "BilibiliSearchWebhook",
+      "webhookId": "d10373c6-0bc2-4f5d-87c1-a054cf9d6aae",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3OpbdSaTg1yNFBzm",
+          "name": "Hollow Knight"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        4240,
+        -560
+      ],
+      "id": "a3269c69-35cf-498a-b77f-40fd1a83153c",
+      "name": "WebhookResponder"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2080,
+        -160
+      ],
+      "id": "beb3ed08-3616-4b53-8351-d97bf4168ce0",
+      "name": "DataMerger"
+    },
+    {
+      "parameters": {
+        "url": "https://bilibili.com",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        96
+      ],
+      "id": "be1a8b4b-58a9-40ae-ad81-e187e1387133",
+      "name": "BilibiliCookieFetcher",
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 假设上一个HTTP Request节点的输出是 $json\nconst responseHeaders = $input.first().json.headers; // 如果启用了Return Full Response，headers会在$json中\nlet cookies = '';\n\nif (responseHeaders && responseHeaders['set-cookie']) {\n  // Set-Cookie可能是一个数组，也可能是一个字符串\n  const setCookieHeader = responseHeaders['set-cookie'];\n  if (Array.isArray(setCookieHeader)) {\n    cookies = setCookieHeader.map(cookie => cookie.split(';')[0]).join('; ');\n  } else if (typeof setCookieHeader === 'string') {\n    cookies = setCookieHeader.split(';')[0];\n  }\n}\n\n// 将提取到的cookies作为新的数据项输出，以便后续节点使用\nreturn [{ json: { bilibili_cookies: cookies } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        16
+      ],
+      "id": "d388c89d-653d-452e-80ae-a6ae9d085fda",
+      "name": "BilibiliCookieExtractor",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://api.bilibili.com/x/web-interface/search/type",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search_type",
+              "value": "video"
+            },
+            {
+              "name": "keyword",
+              "value": "={{ $json.data[1].body.searchTerm }}"
+            },
+            {
+              "name": "order",
+              "value": "={{ $json.data[1].body.sortBy }}"
+            },
+            {
+              "name": "page_size",
+              "value": "={{ $json.data[1].body.limit }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{ $json.data[0].bilibili_cookies }}"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Referer",
+              "value": "https://www.bilibili.com/"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3376,
+        -160
+      ],
+      "id": "1a0d9fc4-1f46-4870-97f1-1b38fead35a5",
+      "name": "BilibiliVideoSearcher",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 从输入中定位到嵌套的 result 数据，处理多层数组结构\nconst rootResult = $input.first().json.result;\n\n// 先扁平化嵌套数组，找到真正包含视频数据的条目数组\nconst inputItems = rootResult.reduce((acc, cur) => {\n    if (Array.isArray(cur)) {\n        acc.push(...cur);\n    } else {\n        acc.push(cur);\n    }\n    return acc;\n}, []);\n\n// 字段映射配置：{ 原始字段名: 目标字段名 }\nconst fieldMapping = {\n    \"bvid\": \"bvid\",\n    \"title\": \"title\",\n    \"description\": \"description\",\n    \"pic\": \"coverImageUrl\", // 视频封面URL\n    \"author\": \"authorName\", // UP主名称\n    \"typename\": \"category\", // 视频分区\n    \"play\": \"playCount\", // 播放量\n    \"favorites\": \"favoriteCount\", // 收藏数\n    \"like\": \"likeCount\", // 点赞数\n    \"danmaku\": \"danmakuCount\", // 弹幕数\n    \"pubdate\": \"publishTimestamp\", // 发布时间戳\n    \"duration\": \"durationInSeconds\" // 视频时长（需转换）\n};\n\n// 遍历数据，映射字段并处理特殊转换\nconst processed = inputItems.map(item => {\n    const filtered = {};\n    \n    Object.entries(fieldMapping).forEach(([sourceField, targetField]) => {\n        if (item[sourceField] !== undefined) {\n            // 特殊处理：视频时长转换（\"1481:7\" → 88867秒）\n            if (sourceField === \"duration\" && typeof item.duration === \"string\") {\n                const [minutes, seconds] = item.duration.split(':').map(Number);\n                filtered[targetField] = minutes * 60 + seconds;\n            }\n            // 特殊处理：封面URL补全协议\n            else if (sourceField === \"pic\" && item.pic.startsWith('//')) {\n                filtered[targetField] = `https:${item.pic}`;\n            }\n            // 特殊处理：清理标题中的HTML标签\n            else if (sourceField === \"title\") {\n                filtered[targetField] = item[sourceField].replace(/<[^>]*>/g, '');\n            }\n            // 普通字段映射\n            else {\n                filtered[targetField] = item[sourceField];\n            }\n        }\n    });\n    \n    return { json: filtered };\n});\n\nreturn processed;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3184,
+        -560
+      ],
+      "id": "0127607f-93d0-4ac8-b886-892990900998",
+      "name": "VideoDataProcessor",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "data.result"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2768,
+        -464
+      ],
+      "id": "d4726507-d153-4e74-a71b-2244b21eeaf0",
+      "name": "VideoDataAggregator"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2336,
+        -128
+      ],
+      "id": "30f234c5-83ac-4352-97f1-6f1eff2f71d4",
+      "name": "SearchDelayWaiter",
+      "webhookId": "c69f0db3-d4b5-4f02-a86b-8f9438f109fa"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f14c08e4-8c16-4a6b-8761-af5642853f23",
+              "leftValue": "={{ $json.body.payload.searchTerm }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "d33485bf-3803-40a7-b049-6cd1aba44200",
+              "leftValue": "={{ $json.body.payload.searchTerm }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -576,
+        -464
+      ],
+      "id": "e5962c54-cc59-43e3-b4e9-266782a10f7a",
+      "name": "SearchTermValidator"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'searchTerm' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2768,
+        -944
+      ],
+      "id": "5edb683d-44fc-4170-9461-4d5f79351600",
+      "name": "SearchTermErrorSetter"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 50202,\n  \"msg\": \"Upstream service error: Failed to fetch data from Bilibili, please try again later.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3536,
+        -16
+      ],
+      "id": "14a266b0-7ba0-4642-8c16-a114c0363fcd",
+      "name": "BilibiliFetchErrorSetter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "13471a44-9d63-45c5-9dfa-1dc4d6a59165",
+              "leftValue": "={{ $json.result }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c43ff42c-d449-4307-a8e1-223eb68835bb",
+              "leftValue": "={{ $json.result }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3008,
+        -448
+      ],
+      "id": "1427855c-e309-46fc-b5c0-ec8ad4fc8c19",
+      "name": "VideoResultValidator"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\":60606,\n  \"msg\": \"'Data processing Failed: Data processing is error.'\",\n  \"data\": null\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3600,
+        -368
+      ],
+      "id": "8932a9b4-155c-461e-ac41-08202c5b972c",
+      "name": "DataProcessErrorSetter"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- 1. 在这里设置开始和结束的【毫秒】时间戳 (13位数) ---\n\n// 这是开始时间（例如：2025年8月1日 00:00:00）\nconst startTimestampMs = $('SortByValidator').first().json.body.payload.startDate; \n\n// 这是结束时间（例如：2025年8月6日 00:00:00）\nconst endTimestampMs = $('SortByValidator').first().json.body.payload.endDate;\n\n\n// --- 2. 将毫秒转为秒，用于和数据中的秒级时间戳比较 ---\nconst startTimestampSec = startTimestampMs / 1000;\nconst endTimestampSec = endTimestampMs / 1000;\n\n\n// --- 3. 执行筛选 ---\nconst filteredItems = $input.all().filter(item => {\n  const publishTs = item.json.publishTimestamp;\n  return publishTs >= startTimestampSec && publishTs <= endTimestampSec;\n});\n\n\n// --- 4. 提取筛选后每个项目中的JSON数据 ---\nconst results = filteredItems.map(item => item.json);\n\n\n// --- 5. 【关键步骤】将所有结果打包进一个JSON对象中 ---\nconst finalOutput = {\n  totalItems: results.length,    // <-- 已按您的要求添加 totalItems 字段\n  videos: results                // 所有筛选出的视频都在这个数组里\n};\n\n\n// --- 6. 将这个包含所有数据的JSON对象作为【单个项目】返回 ---\nreturn [{ json: finalOutput }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3680,
+        -560
+      ],
+      "id": "f09ccf87-e76a-4c0f-8c12-24b84b853bfe",
+      "name": "VideoResultFormatter",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2cdd8cb1-8fe9-4424-922d-0c75364e9f2b",
+              "leftValue": "={{ $json.body.payload.sortBy }}",
+              "rightValue": "stow",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "a1fc3100-a2a3-41f2-91c5-2155f2b16fef",
+              "leftValue": "={{ $json.body.payload.sortBy }}",
+              "rightValue": "dm",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "4d740dbf-714e-4f40-9912-42246f4f3ffa",
+              "leftValue": "={{ $json.body.payload.sortBy }}",
+              "rightValue": "pubdate",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "5c952ff0-1182-4a94-857f-2c06a90d0359",
+              "leftValue": "={{ $json.body.payload.sortBy }}",
+              "rightValue": "click",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "1ce79131-ebf8-4a46-b24f-f7453283483d",
+              "leftValue": "={{ $json.body.payload.sortBy }}",
+              "rightValue": "totalrank",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        112,
+        -240
+      ],
+      "id": "ad3f2e86-efc6-4708-a082-cf41f1fe593a",
+      "name": "SortByValidator"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'sortBy' is invalid. Allowed values:totalrank,click,pubdate,dm,stow.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2768,
+        -752
+      ],
+      "id": "52bca2d2-8b99-48ae-94c0-5bdaf3b392b5",
+      "name": "SortByErrorSetter"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.payload.limit }}",
+                    "rightValue": 42,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lte"
+                    },
+                    "id": "8777eea5-d5e6-4378-ae26-9b84df43d0ed"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "bd89f3f1-2b80-4e06-8b65-cfd0f55036ab",
+                    "leftValue": "={{ $json.body.payload.limit }}",
+                    "rightValue": 42,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7d465360-3bc7-4ec3-bb6d-f77f2851e6f9",
+                    "leftValue": "={{ $json.body.payload.limit }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "number",
+                      "operation": "notExists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        304,
+        -96
+      ],
+      "id": "ad389a73-bce1-4d94-bfc6-8367f5f0cd01",
+      "name": "LimitValueSwitcher"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1c3a68c-1e1d-4450-9fec-d09ec2b24123",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "3710d160-1a63-4e17-a6b2-c1b137c60d4e",
+              "name": "body.payload.sortBy",
+              "value": "={{ $json.body.payload.sortBy }}",
+              "type": "string"
+            },
+            {
+              "id": "703ad869-78d2-48ef-b6c5-b6db365506d8",
+              "name": "body.payload.limit",
+              "value": "42",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        736,
+        96
+      ],
+      "id": "eaa1c52b-ef2d-4f47-8075-39ae8305abe8",
+      "name": "LimitValueSetter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "110bce03-6a83-413f-96bb-4487a5ffce74",
+              "leftValue": "={{ $json.body.payload.sortBy }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "5407deec-9deb-4889-9a17-ee51486ee81a",
+              "leftValue": "={{ $json.body.payload.sortBy }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -256,
+        -368
+      ],
+      "id": "0146588a-a126-49b8-b82e-18d41a079f96",
+      "name": "SortByExistenceValidator"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bc3e03c1-6743-4541-af34-e66ccec19ea3",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "cb2315df-896b-474e-8c8a-a44bb9976efd",
+              "name": "body.payload.sortBy",
+              "value": "totalrank",
+              "type": "string"
+            },
+            {
+              "id": "3dc74409-1523-4066-98a0-b76d8473c508",
+              "name": "body.payload.limit",
+              "value": "={{ $json.body.payload.limit }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -48,
+        -64
+      ],
+      "id": "19f38a70-f739-4804-bbfa-7aa3d9fe951d",
+      "name": "SortByDefaultSetter"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"code\": 0,\n  \"msg\": \"success\",\n  \"data\": {\n    \"totalItems\": {{ $json.totalItems }},\n    \"videos\": {{ $json.videos }}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3952,
+        -560
+      ],
+      "id": "516eb789-b165-435d-bbb8-b046403fdae6",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4779131b-7bef-467e-93c6-b0ccb2fd19f1",
+              "leftValue": "={{ $('SortByValidator').first().json.body.payload.startDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "061231f1-6470-47e4-835d-4df092cabf57",
+              "leftValue": "={{ $('SortByValidator').first().json.body.payload.startDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "58024c73-d402-4b4d-9bd3-5eb113af402c",
+              "leftValue": "={{ $('SortByValidator').first().json.body.payload.endDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "093ad04d-bd10-47d2-9857-715e84acff30",
+              "leftValue": "={{ $('SortByValidator').first().json.body.payload.endDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3392,
+        -560
+      ],
+      "id": "f52ee4a9-2654-4f62-a638-8fd5addfb0f9",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. 获取所有输入项（上游已处理好字段名）\nconst videoItems = $input.all().map(item => item.json);\n\n// 2. 构建输出结构\nconst output = {\n  totalItems: videoItems.length, // 总条目数\n  videos: videoItems             // 视频数组（直接复用上游处理好的对象）\n};\n\n// 返回结果（n8n Code 节点需返回数组包裹的 JSON）\nreturn [{ json: output }];$input.first().json.publishTimestamp"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3712,
+        -416
+      ],
+      "id": "a968c6f4-d915-4ef8-a9dc-8fe839219d8f",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0b9a7df1-45e4-47e6-8581-7b338a2d9deb",
+              "name": "body.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "e08f4d8c-3bad-4733-8729-9425bfe63472",
+              "name": "body.sortBy",
+              "value": "={{ $json.body.payload.sortBy }}",
+              "type": "string"
+            },
+            {
+              "id": "6ed19187-93f9-4a77-9869-480f4d845fc2",
+              "name": "body.limit",
+              "value": "={{ $json.body.payload.limit }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        -80
+      ],
+      "id": "e1623644-4113-4df2-b97a-c51cecb21ad1",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        64
+      ],
+      "id": "a6904023-eda5-4267-abb0-812da641f4d9",
+      "name": "RequestLimitSetter"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2544,
+        -128
+      ],
+      "id": "acd84bb5-f64c-4f30-bf76-d39dda8dfe15",
+      "name": "Aggregate"
+    }
+  ],
+  "pinData": {
+    "BilibiliSearchWebhook": [
+      {
+        "json": {
+          "headers": {
+            "accept": "application/json, application/yaml, application/*+json",
+            "content-type": "application/json",
+            "root": "123456",
+            "user-agent": "Java/21.0.2",
+            "host": "10.7.10.203:5678",
+            "connection": "keep-alive",
+            "content-length": "233"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "payload": {
+              "searchTerm": "如何引导用户说出真实需求",
+              "limit": "",
+              "sortBy": "",
+              "beginTime": "",
+              "endTime": ""
+            },
+            "meta": {
+              "caller": "Learning-Center-API",
+              "requestId": "4a8b4523-9015-47f8-9b58-f7e02e42958e",
+              "timestamp": 1754462619208
+            }
+          },
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/bilibili-videos/search",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "ItemBatchLooper": {
+      "main": [
+        [
+          {
+            "node": "VideoDataAggregator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DataMerger",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "RequestLimitSetter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BilibiliSearchWebhook": {
+      "main": [
+        [
+          {
+            "node": "SearchTermValidator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WebhookResponder": {
+      "main": [
+        []
+      ]
+    },
+    "DataMerger": {
+      "main": [
+        [
+          {
+            "node": "SearchDelayWaiter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BilibiliCookieFetcher": {
+      "main": [
+        [
+          {
+            "node": "BilibiliCookieExtractor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BilibiliFetchErrorSetter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BilibiliCookieExtractor": {
+      "main": [
+        [
+          {
+            "node": "DataMerger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BilibiliVideoSearcher": {
+      "main": [
+        [
+          {
+            "node": "ItemBatchLooper",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BilibiliFetchErrorSetter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VideoDataProcessor": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VideoDataAggregator": {
+      "main": [
+        [
+          {
+            "node": "VideoResultValidator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchDelayWaiter": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchTermValidator": {
+      "main": [
+        [
+          {
+            "node": "SortByExistenceValidator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SearchTermErrorSetter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchTermErrorSetter": {
+      "main": [
+        [
+          {
+            "node": "WebhookResponder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BilibiliFetchErrorSetter": {
+      "main": [
+        [
+          {
+            "node": "WebhookResponder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VideoResultValidator": {
+      "main": [
+        [
+          {
+            "node": "VideoDataProcessor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DataProcessErrorSetter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DataProcessErrorSetter": {
+      "main": [
+        [
+          {
+            "node": "WebhookResponder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VideoResultFormatter": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SortByValidator": {
+      "main": [
+        [
+          {
+            "node": "LimitValueSwitcher",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SortByErrorSetter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SortByErrorSetter": {
+      "main": [
+        [
+          {
+            "node": "WebhookResponder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LimitValueSwitcher": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LimitValueSetter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LimitValueSetter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LimitValueSetter": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SortByExistenceValidator": {
+      "main": [
+        [
+          {
+            "node": "SortByValidator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SortByDefaultSetter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SortByDefaultSetter": {
+      "main": [
+        [
+          {
+            "node": "SortByValidator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "WebhookResponder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "VideoResultFormatter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "ItemBatchLooper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RequestLimitSetter": {
+      "main": [
+        [
+          {
+            "node": "BilibiliCookieFetcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "BilibiliVideoSearcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ab5de5f0-ffbc-4a5d-825f-93c73b8b94d0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "Nxy71aX5uMXOAn2m",
+  "tags": []
+}

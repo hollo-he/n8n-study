@@ -1,0 +1,1503 @@
+{
+  "name": "LearningResource - BliblivideoSelect",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "90221669-6d6a-4059-aed1-8c4ad95ec07c",
+              "leftValue": "={{ $json.body.payload.video.bvid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "3011c542-7d12-400c-85a2-14a3616ada7e",
+              "leftValue": "={{ $json.body.payload.video.bvid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3104,
+        1952
+      ],
+      "id": "5cb93718-6126-46d8-9271-b7051fe49fd1",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'Bvid' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        2432
+      ],
+      "id": "9ee70090-8072-45f4-83e2-67eb208b5622",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f61cf67a-25d6-4a24-b684-9d6e3e270d91",
+              "leftValue": "={{ $json.body.payload.skillMap }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "b38dac80-23d7-4aa5-9452-8d0d72f61b25",
+              "leftValue": "={{ $json.body.payload.skillMap }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2880,
+        1856
+      ],
+      "id": "fa616b72-867c-4b72-89a0-8eb1c7162f2c",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'skillMap' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        2240
+      ],
+      "id": "5e114dfa-1e43-41bf-b4aa-0747777a101a",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 50203,\n  \"msg\": \"Upstream service error: Video content analysis service failed, please try again later.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -800,
+        1744
+      ],
+      "id": "7bc5aa16-2694-4726-9b95-b75b5ab101fa",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "007cee3b-7cf1-4941-8791-51e7c159c438",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "error",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        1472
+      ],
+      "id": "3c8b7ea0-b6ab-4b31-9000-43e50d6036d2",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 50202,\n  \"msg\": \"data.result falsed.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        1568
+      ],
+      "id": "5128df64-4e45-49b9-9a20-f3ba9575a319",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 创建一个空数组，用于存放最终的输出结果\nconst returnItems = [];\n\n// n8n 标准模式：遍历所有输入的 item\nfor (const item of items) {\n  try {\n    // 从当前 item 的 json 数据中安全地访问 payload 对象\n    const payload = item.json.body?.payload;\n\n    // 只有在 payload 对象存在时才继续执行，避免出错\n    if (payload) {\n      // 从 payload 中提取 video 对象\n      const video = payload.video;\n      const meta = {};\n\n      // 检查 video 对象是否存在\n      if (video) {\n        const fieldsToExtract = [\n          \"coverImageUrl\",\n          \"authorName\",\n          \"playCount\",\n          \"favoriteCount\",\n          \"likeCount\",\n          \"danmakuCount\",\n          \"publishTimestamp\",\n          \"durationInSeconds\"\n        ];\n\n        // 遍历需要提取的字段列表\n        fieldsToExtract.forEach(field => {\n          // 检查字段是否存在于 video 对象中，并且值不是 undefined 或 null\n          if (video[field] !== undefined && video[field] !== null) {\n            meta[field] = video[field];\n          }\n        });\n      }\n\n      // 提取 skillMap 数组\n      const skillMap = payload.skillMap || [];\n\n      // 将处理好的数据按照 n8n 的格式添加到结果数组中\n      returnItems.push({\n        json: {\n          meta: [meta], // 将 meta 对象放入一个数组中\n        }\n      });\n    }\n\n  } catch (error) {\n    // 如果处理某个 item 时发生错误，就在 n8n 的界面中显示错误，\n    // 并继续处理下一个 item，而不是让整个工作流失败。\n    if (this.continueOnFail()) {\n      items.push({ json: this.getInputData(), error, pairedItem: item.pairedItem });\n    } else {\n      throw error;\n    }\n  }\n}\n\n// 返回包含所有处理过的数据的数组\nreturn returnItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2656,
+        1792
+      ],
+      "id": "b6af551f-4588-4c7f-aebe-6aa93532aa56",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('设置固定变量值1').item.json.url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.httpBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1536,
+        1712
+      ],
+      "id": "47333168-8150-43c4-a291-411bb0eca3a6",
+      "name": "HTTP Request1",
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "=http://10.7.10.203:3015/api/task_status/{{ $('HTTP Request1').item.json.data.task_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1088,
+        1520
+      ],
+      "id": "73e27665-ecd8-4ffd-a666-6137ee1e2e03",
+      "name": "Poll Status1",
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1264,
+        1616
+      ],
+      "id": "6f20cdc6-90d2-412d-a56b-12cc450e0c4a",
+      "name": "Wait 5s1",
+      "webhookId": "428b49c5-fe93-401a-8948-6f9ca855211e"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dd837406-a7b4-484e-b109-09028e5517ba",
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "8bb35337-13ca-4472-91ba-a0c26be91e73",
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "SUCCESS",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -864,
+        1472
+      ],
+      "id": "c4845909-2436-40ed-a272-3f1ff99e81d9",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 这个节点现在可以处理两种输入：成功的结果 或 失败的错误信息\n\n// 获取上一个节点传入的完整JSON对象\nconst inputJson = $input.first().json;\n\n// 判断输入的数据是成功结果还是错误信息\n// 我们通过检查是否存在 'data.result.markdown' 这个成功路径特有的字段来判断\nif (inputJson.data && inputJson.data.result && inputJson.data.result.markdown) {\n  // --- 这是成功路径 ---\n  console.log(\"检测到成功数据，正在解析Markdown...\");\n  const markdownStr = inputJson.data.result.markdown;\n\n  // 移除代码块标记\n  const jsonStr = markdownStr\n    .replace(/^```json\\n/, '')\n    .replace(/\\n```$/, '');\n\n  try {\n    const parsedData = JSON.parse(jsonStr);\n    // 返回一个包含成功状态和解析后数据的对象\n    return {\n      status: 'success',\n      data: parsedData\n    };\n  } catch (error) {\n    // 如果Markdown中的JSON本身有问题，也按错误处理\n    return {\n      status: 'error',\n      error_code: 'JSON_PARSE_ERROR',\n      error_message: `从Markdown中解析JSON失败: ${error.message}`\n    };\n  }\n\n} else {\n  // --- 这是失败路径 ---\n  console.log(\"检测到错误数据，正在格式化错误信息...\");\n  // 直接从输入中提取错误码和错误信息\n  return {\n    status: 'error',\n    error_code: inputJson.code,\n    error_message: inputJson.msg\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        1472
+      ],
+      "id": "2a4dae20-875c-428b-807e-42f18dc81780",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "38342d6f-af04-4606-b548-c66b53ff7829",
+              "name": "url",
+              "value": "http://10.7.10.203:3015/api/generate_note",
+              "type": "string"
+            },
+            {
+              "id": "51be6cc6-1f9f-465b-8f43-9388c6083412",
+              "name": "bilibili_url",
+              "value": "=https://www.bilibili.com/video/{{ $('If2').item.json.body.payload.video.bvid }}?&p={{ $('If2').item.json.body.payload.video.p }}",
+              "type": "string"
+            },
+            {
+              "id": "9f8d4e48-89ff-4b89-96e3-5adf41c58067",
+              "name": "task_id",
+              "value": "={{ $json.data }}",
+              "type": "string"
+            },
+            {
+              "id": "926c8c6a-eb47-4bea-80ef-3f1c8b13aab8",
+              "name": "extras",
+              "value": "=## 重要！！\n同时你也是一名专业的IT技术内容分析师。你需要根据视频字幕内容，将其结构化为一个用于学习路径规划的资源。\n\n请严格按照下面的JSON格式输出，不要添加任何额外的解释。\n\n输出JSON:\n\n{\n  \"suggested_title\": \"(根据内容生成一个更精确、更适合作为学习资源的标题)\",\n  \"ai_summary\": \"(用2-3句话总结这个视频的核心内容、解决了什么问题)\",\n  \"difficulty_level\": \"(从 'Beginner', 'Intermediate', 'Advanced' 中选择一个最合适的)\",\n  \"primary_skills\": [\n    \"(列出与这个视频内容最相关的0-5个核心技能标签，技能标签必须从{{ $json.skills }}中选择，不能使用给定技能标签范围以外的标签)\"\n  ],\n  \"relevance_to_learning\": {\n    \"is_valuable\": true/false,\n    \"reason\": \"(简要说明它为什么是/不是一个好的学习资源，例如：'这是一个完整的项目教程' 或 '这只是一个动态资讯')\"\n  },\n  \"note\": \"(前面说的关于视频对应的笔记内容)\"\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1984,
+        1792
+      ],
+      "id": "b5cfb733-552e-4e7f-9840-8f4ab3f21b0d",
+      "name": "设置固定变量值1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0679a773-0021-4838-a9d9-a0967e87f213",
+              "name": "skills",
+              "value": "={{ $('If2').item.json.body.payload.skillMap }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2208,
+        1792
+      ],
+      "id": "729c973f-b363-4070-aa6d-4a600bb3acdb",
+      "name": "技能标签列表（实际应由请求传入）1"
+    },
+    {
+      "parameters": {
+        "value": "={{ $now.toMillis().toString() }}"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -2432,
+        1792
+      ],
+      "id": "ca4358eb-2c32-44b2-8a01-0be58dcb33bc",
+      "name": "生成MD5作为转换任务ID1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. 从上一个节点传入的数据中，获取我们需要的变量\nconst skills = $('技能标签列表（实际应由请求传入）1').first().json.skills;\nconst bilibili_url = $json.bilibili_url;\nconst task_id = $('生成MD5作为转换任务ID1').first().json.data;\n\n// 2. 定义Prompt字符串\nconst prompt = `## 角色与目标\n你是一名专业的IT技术内容审核与分析师，为一个专业的学习路径平台工作。你的首要职责是**严格筛选**内容，确保只有**直接与IT技术、软件开发、计算机科学相关的视频**才能被收录。你的判断必须客观、严格，绝不将非技术性的励志、感悟或娱乐内容错误地标记为学习资源。\n\n## 核心任务处理流程 (IF-THEN)\n请严格遵循以下两步流程：\n\n### 第一步：判断内容相关性\n这是你的首要任务。请根据视频字幕，判断其核心内容是否属于“有价值的IT学习资源”。\n\n- **[标准] 什么“是”IT学习资源：**\n  - 内容直接讲授或演示了具体的编程语言、算法、数据结构、软件架构、开发工具、网络协议、数据库、操作系统、人工智能等硬核IT技术。\n  - 例如：“Python入门教程”、“如何用React构建一个待办事项清单”、“TCP/IP协议详解”。\n\n- **[标准] 什么“不是”IT学习资源：**\n  - 内容是心灵鸡汤、人生哲理、成长感悟、情感故事、动漫杂谈、游戏娱乐、日常生活分享等。\n  - **重要：** 即使这些内容能引申出某些抽象的“道理”或“思维方式”，只要它不包含具体的技术实践或知识点，就**必须**被判定为无关内容。例如，从《成龙历险记》中总结“成长和勇气”就属于此类。\n\n### 第二步：根据判断结果生成JSON\n你的输出必须严格依据第一步的判断。\n\n#### -> 如果内容“是”IT学习资源:\n1.  **relevance_to_learning.is_valuable**: 必须设置为 **true**。\n2.  **relevance_to_learning.reason**: 简要说明其作为技术学习资源的价值。\n3.  **suggested_title**: 根据技术内容生成一个精确、专业的标题。\n4.  **ai_summary**: 用2-3句话总结视频讲解的核心技术点。\n5.  **difficulty_level**: 根据技术深度，客观评估为1-4的数字（1-记忆，2-理解，3-简单应用，4-综合应用）。\n6.  **primary_skills**: 从候选列表 \\`${skills}\\` 中，提取并只选择视频内容**直接讲到**的0-5个最相关的技能标签的id。如果一个都匹配不上，则返回空数组 \\`[]\\`。\n7.  **note**: 生成结构化的视频笔记，提炼关键知识点和代码片段。\n\n#### -> 如果内容“不是”IT学习资源:\n1.  **relevance_to_learning.is_valuable**: 必须设置为 **false**。\n2.  **relevance_to_learning.reason**: **必须**明确说明内容不相关的原因。例如：“该视频是动漫评论，不包含IT技术内容。”\n3.  **suggested_title**: 概括视频的**实际内容**，例如：“《成龙历险记》中的成长主题分析”。\n4.  **ai_summary**: 概括视频的**实际主旨**，例如：“视频通过动漫片段探讨了勇气和成长的哲学意义。”\n5.  **difficulty_level**: 必须设置为 **1**。\n6.  **primary_skills**: 必须是**空数组 \\`[]\\`**。\n7.  **note**: 此处可以简短说明视频内容，或留空。\n\n### 节约规则\n当你已经能判断是否可以可以作为学习资源时，则立即停止无需再判断\n\n\n## 严格输出要求\n你的回答必须是且仅能是一个有效的、可直接被解析的JSON对象，不能包含任何 markdown 代码块标记(\\`\\`\\`)或任何解释性文字。\n\n## JSON结构模板\n{\n  \"suggested_title\": \"字符串值\",\n  \"ai_summary\": \"字符串值\",\n  \"difficulty_level\": 数字值,\n  \"primary_skills\": [\"字符串1\", \"字符串2\"],\n  \"relevance_to_learning\": {\n    \"is_valuable\": 布尔值,\n    \"reason\": \"字符串值\"\n  },\n  \"note\": \"字符串值\"\n}\n\n现在，请严格按照上述流程分析视频内容并输出JSON：`;\n\n\n// 3. 构建我们需要的请求体(Body)对象\nconst httpBody = {\n  video_url: bilibili_url,\n  platform: \"bilibili\",\n  quality: \"medium\",\n  screenshot: false,\n  link: false,\n  model_name: \"deepseek-chat\",\n  format: [ \"summary\" ],\n  style: \"minimal\",\n  extras: prompt,\n  video_understanding: false,\n  video_interval: 4,\n  grid_size: [ 3, 3 ],\n  provider_id: \"deepseek\",\n  task_id: task_id\n};\n\n// 4. 【关键修正】只返回一个包含了 httpBody 的全新、干净的对象。\n//    不再使用 ...$json，彻底告别数据冗余。\nreturn {\n  json: {\n    httpBody: httpBody\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        1792
+      ],
+      "id": "0bff46a2-437a-4892-ab5a-ff06faaa1450",
+      "name": "生成Http请求Body1",
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3855c9c9-0dca-4953-9305-8952d43ba481",
+              "leftValue": "={{ $json.code }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -640,
+        1568
+      ],
+      "id": "357399a2-ea2d-4d21-8de2-346d9146673a",
+      "name": "判断是否有其他异常1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api/v1/learning-resource/BliblivideoSelect",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3328,
+        1952
+      ],
+      "id": "51487747-006b-488e-81c5-8774edb3a6ba",
+      "name": "Webhook1",
+      "webhookId": "2640b7c9-1492-47bc-851c-62e82c4d6545",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3OpbdSaTg1yNFBzm",
+          "name": "Hollow Knight"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        896,
+        1744
+      ],
+      "id": "3fe937db-60fd-4eae-85dd-882c415a708a",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 获取上游节点数据\nconst inputData = $input.item.json;\nconst webhook1Data = $('Webhook1').item.json.body?.payload?.video;\n\n// 健壮性检查：确保 Webhook1 的数据存在\nif (!webhook1Data) {\n  throw new Error(\"从 Webhook1 未能获取到有效的视频数据\");\n}\n\n// 核心逻辑：先定义最终输出结构，但 data 暂时为空\nconst outputJson = {\n  code: 0,\n  msg: \"success\",\n  data: {} // 关键：先初始化为一个空对象\n};\n\n// 使用可选链 (?.) 安全地获取 is_valuable 的值\nconst isValuable = inputData.data.relevance_to_learning?.is_valuable;\n\n// 根据 is_valuable 的值，决定如何填充 data 对象\nif (isValuable === true) {\n  // 如果内容有价值，则填充完整的 data 对象\n  outputJson.data = {\n    suggested_title: inputData.data.suggested_title || \"\",\n    description: inputData.data.ai_summary || \"\",\n    Main_Content: inputData.data.note || \"\",\n    bvid: webhook1Data.bvid || \"\",\n    difficulty_level: inputData.data.difficulty_level || 0,\n    primary_skills: inputData.data.primary_skills || [],\n    // 将 relevance_to_learning 对象也一并加入\n    relevance_to_learning: inputData.data.relevance_to_learning, \n    addition: {\n      coverImageUrl: webhook1Data.coverImageUrl || \"\",\n      authorName: webhook1Data.authorName || \"\",\n      playCount: webhook1Data.playCount || 0,\n      favoriteCount: webhook1Data.favoriteCount || 0,\n      likeCount: webhook1Data.likeCount || 0,\n      danmakuCount: webhook1Data.danmakuCount || 0,\n      publishTimestamp: webhook1Data.publishTimestamp || 0,\n      durationInSeconds: webhook1Data.durationInSeconds || 0\n    }\n  };\n} \n// 如果 isValuable 为 false 或不存在，outputJson.data 将保持为我们初始化的空对象 {}\n// 无需 else 分支，因为默认就是空对象\n\n// 返回最终结果\nreturn { json: outputJson };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        1376
+      ],
+      "id": "f813cab6-aed2-4ec5-af93-616c3889fe2a",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={\n   \n                    \"title\": {{ $json.data.suggested_title }},\n                    \"description\":  {{ $json.data.description }},\n                    \"content\": {{ $json.data.Main_Content }},\n                    \"location\": \"https://www.bilibili.com/video/{{ $json.data.bvid}}\",\n                    \"pic\": \"\",\n                    \"level\": {{ $json.data.difficulty_level }},\n                    \"genre\": 1,\n                    \"inSite\": 2,\n                    \"skillId\": {{ $json.data.primary_skills }},\n                    \"addition\": {{ JSON.stringify($json.data.meta,null,2) }}\n                \n}",
+        "options": {}
+      },
+      "id": "d6e59bd3-f78b-45f0-9338-805882aa8947",
+      "name": "1",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "position": [
+        -3200,
+        3088
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "chunkSize": 6000,
+        "options": {}
+      },
+      "id": "8f284331-c270-4c0d-8e98-786cef818e37",
+      "name": "Recursive Character Text Splitter1",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "position": [
+        -3104,
+        3296
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -3328,
+        3088
+      ],
+      "id": "00644b1c-ea21-431e-b2c3-5d5b96aebcd4",
+      "name": "Embeddings Google Gemini2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rEr4QKfc9fKcHID3",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "milvusCollection": {
+          "__rl": true,
+          "value": "recource_vector",
+          "mode": "list",
+          "cachedResultName": "recource_vector"
+        },
+        "options": {
+          "clearCollection": false
+        }
+      },
+      "id": "b5ab0be6-be86-4cfb-8246-d4de2220fdc8",
+      "name": "Milvus Vector Store2",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreMilvus",
+      "position": [
+        -3312,
+        2864
+      ],
+      "typeVersion": 1.1,
+      "alwaysOutputData": true,
+      "credentials": {
+        "milvusApi": {
+          "id": "mMhNWBM1ScqYyxQ1",
+          "name": "Milvus account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1a6c0bc5-ce36-47b5-a8b4-ee107d282072",
+              "name": "code",
+              "value": "={{ $('Code').item.json.code }}",
+              "type": "string"
+            },
+            {
+              "id": "8164f181-077d-452a-9067-9cbf10cbc0c4",
+              "name": "msg",
+              "value": "={{ $('Code').item.json.msg }}",
+              "type": "string"
+            },
+            {
+              "id": "17f48ab9-966d-4e83-aece-9f463e577ba2",
+              "name": "data",
+              "value": "={{ $('Code').item.json.data }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        1376
+      ],
+      "id": "4fabcfd2-e43d-440c-a24e-9c99a990730d",
+      "name": "Edit Fields5"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -432,
+        1856
+      ],
+      "id": "7b26a7bb-6d21-4e2b-9240-11ae195cb279",
+      "name": "Wait",
+      "webhookId": "66eff3c0-7b31-4c41-bc90-18aad28dc19f"
+    }
+  ],
+  "pinData": {
+    "Webhook1": [
+      {
+        "json": {
+          "headers": {
+            "accept": "application/json, application/yaml, application/*+json",
+            "content-type": "application/json",
+            "root": "123456",
+            "user-agent": "Java/17.0.12",
+            "host": "10.7.10.203:5678",
+            "connection": "keep-alive",
+            "content-length": "5529"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "payload": {
+              "skillMap": [
+                {
+                  "id": "1",
+                  "title": "竞品分析"
+                },
+                {
+                  "id": "2",
+                  "title": "市场调研"
+                },
+                {
+                  "id": "3",
+                  "title": "用户访谈"
+                },
+                {
+                  "id": "4",
+                  "title": "问卷设计"
+                },
+                {
+                  "id": "5",
+                  "title": "用户画像"
+                },
+                {
+                  "id": "6",
+                  "title": "商业模式设计"
+                },
+                {
+                  "id": "7",
+                  "title": "产品路线图(Roadmap)规划"
+                },
+                {
+                  "id": "8",
+                  "title": "MVP定义"
+                },
+                {
+                  "id": "9",
+                  "title": "需求分析与管理"
+                },
+                {
+                  "id": "10",
+                  "title": "数据分析基础"
+                },
+                {
+                  "id": "11",
+                  "title": "A/B测试设计"
+                },
+                {
+                  "id": "12",
+                  "title": "关键指标(KPI/OKR)设定"
+                },
+                {
+                  "id": "13",
+                  "title": "行业数据解读"
+                },
+                {
+                  "id": "14",
+                  "title": "UI设计(Web/App)"
+                },
+                {
+                  "id": "15",
+                  "title": "设计规范(Design System)"
+                },
+                {
+                  "id": "16",
+                  "title": "图形设计"
+                },
+                {
+                  "id": "17",
+                  "title": "Figma/Sketch"
+                },
+                {
+                  "id": "18",
+                  "title": "信息架构"
+                },
+                {
+                  "id": "19",
+                  "title": "用户流程图"
+                },
+                {
+                  "id": "20",
+                  "title": "线框图"
+                },
+                {
+                  "id": "21",
+                  "title": "可用性测试"
+                },
+                {
+                  "id": "22",
+                  "title": "用户研究"
+                },
+                {
+                  "id": "23",
+                  "title": "3D建模(Blender/C4D)"
+                },
+                {
+                  "id": "24",
+                  "title": "材质与渲染"
+                },
+                {
+                  "id": "25",
+                  "title": "VR/AR场景设计"
+                },
+                {
+                  "id": "26",
+                  "title": "空间交互设计"
+                },
+                {
+                  "id": "27",
+                  "title": "After Effects"
+                },
+                {
+                  "id": "28",
+                  "title": "Lottie"
+                },
+                {
+                  "id": "29",
+                  "title": "交互动效"
+                },
+                {
+                  "id": "30",
+                  "title": "视觉特效(VFX)"
+                },
+                {
+                  "id": "31",
+                  "title": "HTML/CSS"
+                },
+                {
+                  "id": "32",
+                  "title": "JavaScript/TypeScript"
+                },
+                {
+                  "id": "33",
+                  "title": "React/Vue/Angular"
+                },
+                {
+                  "id": "34",
+                  "title": "Android (Kotlin/Java)"
+                },
+                {
+                  "id": "35",
+                  "title": "iOS (Swift/Objective-C)"
+                },
+                {
+                  "id": "36",
+                  "title": "React Native"
+                },
+                {
+                  "id": "37",
+                  "title": "Flutter"
+                },
+                {
+                  "id": "38",
+                  "title": "小程序开发"
+                },
+                {
+                  "id": "39",
+                  "title": "Qt (C++)"
+                },
+                {
+                  "id": "40",
+                  "title": "WPF/WinForms (.NET)"
+                },
+                {
+                  "id": "41",
+                  "title": "Cocoa (macOS)"
+                },
+                {
+                  "id": "42",
+                  "title": "Electron (基于Web技术)"
+                },
+                {
+                  "id": "43",
+                  "title": "Unity"
+                },
+                {
+                  "id": "44",
+                  "title": "Unreal Engine"
+                },
+                {
+                  "id": "45",
+                  "title": "WebGL/Three.js"
+                },
+                {
+                  "id": "46",
+                  "title": "图形学基础"
+                },
+                {
+                  "id": "47",
+                  "title": "Java"
+                },
+                {
+                  "id": "48",
+                  "title": "Go"
+                },
+                {
+                  "id": "49",
+                  "title": "Python"
+                },
+                {
+                  "id": "50",
+                  "title": "C#"
+                },
+                {
+                  "id": "51",
+                  "title": "PHP"
+                },
+                {
+                  "id": "52",
+                  "title": "Node.js"
+                },
+                {
+                  "id": "53",
+                  "title": "Rust"
+                },
+                {
+                  "id": "54",
+                  "title": "Spring Boot"
+                },
+                {
+                  "id": "55",
+                  "title": "Django/Flask"
+                },
+                {
+                  "id": "56",
+                  "title": "Express/Koa"
+                },
+                {
+                  "id": "57",
+                  "title": "Gin"
+                },
+                {
+                  "id": "58",
+                  "title": ".NET Core"
+                },
+                {
+                  "id": "59",
+                  "title": "MySQL/PostgreSQL"
+                },
+                {
+                  "id": "60",
+                  "title": "Redis"
+                },
+                {
+                  "id": "61",
+                  "title": "MongoDB"
+                },
+                {
+                  "id": "62",
+                  "title": "Elasticsearch"
+                },
+                {
+                  "id": "63",
+                  "title": "数据库设计与优化"
+                },
+                {
+                  "id": "64",
+                  "title": "RESTful API设计"
+                },
+                {
+                  "id": "65",
+                  "title": "GraphQL"
+                },
+                {
+                  "id": "66",
+                  "title": "gRPC"
+                },
+                {
+                  "id": "67",
+                  "title": "微服务架构"
+                },
+                {
+                  "id": "68",
+                  "title": "数据仓库/湖"
+                },
+                {
+                  "id": "69",
+                  "title": "ETL"
+                },
+                {
+                  "id": "70",
+                  "title": "Spark"
+                },
+                {
+                  "id": "71",
+                  "title": "Pandas"
+                },
+                {
+                  "id": "72",
+                  "title": "统计建模"
+                },
+                {
+                  "id": "73",
+                  "title": "TensorFlow/PyTorch"
+                },
+                {
+                  "id": "74",
+                  "title": "模型部署与监控"
+                },
+                {
+                  "id": "75",
+                  "title": "特征工程"
+                },
+                {
+                  "id": "76",
+                  "title": "计算机视觉(CV)"
+                },
+                {
+                  "id": "77",
+                  "title": "自然语言处理(NLP)"
+                },
+                {
+                  "id": "78",
+                  "title": "推荐系统"
+                },
+                {
+                  "id": "79",
+                  "title": "Prompt工程"
+                },
+                {
+                  "id": "80",
+                  "title": "RAG"
+                },
+                {
+                  "id": "81",
+                  "title": "Fine-tuning"
+                },
+                {
+                  "id": "82",
+                  "title": "多模态模型应用"
+                },
+                {
+                  "id": "83",
+                  "title": "LangChain/LlamaIndex"
+                },
+                {
+                  "id": "84",
+                  "title": "AutoGPT/BabyAGI概念"
+                },
+                {
+                  "id": "85",
+                  "title": "n8n/Zapier"
+                },
+                {
+                  "id": "86",
+                  "title": "智能体规划与执行"
+                },
+                {
+                  "id": "87",
+                  "title": "函数调用(Function Calling)"
+                },
+                {
+                  "id": "88",
+                  "title": "AWS/Azure/GCP"
+                },
+                {
+                  "id": "89",
+                  "title": "Docker"
+                },
+                {
+                  "id": "90",
+                  "title": "Kubernetes(K8s)"
+                },
+                {
+                  "id": "91",
+                  "title": "Serverless"
+                },
+                {
+                  "id": "92",
+                  "title": "CI/CD"
+                },
+                {
+                  "id": "93",
+                  "title": "Jenkins/GitLab CI"
+                },
+                {
+                  "id": "94",
+                  "title": "Prometheus/Grafana"
+                },
+                {
+                  "id": "95",
+                  "title": "基础设施即代码(IaC)"
+                },
+                {
+                  "id": "96",
+                  "title": "Web安全(OWASP)"
+                },
+                {
+                  "id": "97",
+                  "title": "渗透测试"
+                },
+                {
+                  "id": "98",
+                  "title": "数据加密"
+                },
+                {
+                  "id": "99",
+                  "title": "隐私计算"
+                },
+                {
+                  "id": "100",
+                  "title": "合规性(GDPR/CCPA)"
+                },
+                {
+                  "id": "101",
+                  "title": "测试用例设计"
+                },
+                {
+                  "id": "102",
+                  "title": "Bug跟踪与管理"
+                },
+                {
+                  "id": "103",
+                  "title": "探索性测试"
+                },
+                {
+                  "id": "104",
+                  "title": "Selenium/Cypress"
+                },
+                {
+                  "id": "105",
+                  "title": "Appium"
+                },
+                {
+                  "id": "106",
+                  "title": "JMeter"
+                },
+                {
+                  "id": "107",
+                  "title": "接口自动化"
+                },
+                {
+                  "id": "108",
+                  "title": "性能测试"
+                },
+                {
+                  "id": "109",
+                  "title": "测试框架开发"
+                },
+                {
+                  "id": "110",
+                  "title": "Mock/Stub技术"
+                },
+                {
+                  "id": "111",
+                  "title": "代码覆盖率分析"
+                },
+                {
+                  "id": "112",
+                  "title": "敏捷/Scrum/Kanban"
+                },
+                {
+                  "id": "113",
+                  "title": "项目管理工具(Jira/ClickUp)"
+                },
+                {
+                  "id": "114",
+                  "title": "风险管理"
+                },
+                {
+                  "id": "115",
+                  "title": "跨职能沟通"
+                },
+                {
+                  "id": "116",
+                  "title": "技术文档写作"
+                },
+                {
+                  "id": "117",
+                  "title": "演示与汇报"
+                },
+                {
+                  "id": "118",
+                  "title": "冲突解决"
+                },
+                {
+                  "id": "119",
+                  "title": "行业分析"
+                },
+                {
+                  "id": "120",
+                  "title": "成本与效益分析"
+                },
+                {
+                  "id": "121",
+                  "title": "供应链知识"
+                },
+                {
+                  "id": "122",
+                  "title": "批判性思维"
+                },
+                {
+                  "id": "123",
+                  "title": "终身学习能力"
+                },
+                {
+                  "id": "124",
+                  "title": "时间管理"
+                },
+                {
+                  "id": "125",
+                  "title": "领导力潜质"
+                }
+              ],
+              "video": {
+                "bvid": "BV1dw41197nn",
+                "title": "《迭 代》 | 牛顿迭代法与最速下降法 | 机器学习 最优化 数值计算",
+                "description": "【1】用动画的形式演示了牛顿迭代法和梯度算法如何求解最优化问题；\n【2】文中动画全部用matlab绘制，需要动画代码的可以后台领取粉丝勋章后私戳图图；\n【3】图示算法的原理以及其它优化算法可以关注微信公众号「图通道」查看。",
+                "coverImageUrl": "https://i0.hdslb.com/bfs/archive/57b93382d2cffa66b6f7ce2a081db8cd456c69fb.jpg",
+                "authorName": "图通道",
+                "category": "校园学习",
+                "playCount": 19721,
+                "favoriteCount": 326,
+                "likeCount": 312,
+                "danmakuCount": 0,
+                "publishTimestamp": 1627208451,
+                "durationInSeconds": 96,
+                "p": 1
+              }
+            },
+            "meta": {
+              "caller": "Learning-Center-API",
+              "requestId": "83f5fe25-b743-4466-a420-9556f2147128",
+              "timestamp": 1754773816108
+            }
+          },
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/BliblivideoSelect",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "1": {
+      "ai_document": [
+        [
+          {
+            "node": "Milvus Vector Store2",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "生成MD5作为转换任务ID1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Wait 5s1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Status1": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5s1": {
+      "main": [
+        [
+          {
+            "node": "Poll Status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "判断是否有其他异常1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "设置固定变量值1": {
+      "main": [
+        [
+          {
+            "node": "生成Http请求Body1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "技能标签列表（实际应由请求传入）1": {
+      "main": [
+        [
+          {
+            "node": "设置固定变量值1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成MD5作为转换任务ID1": {
+      "main": [
+        [
+          {
+            "node": "技能标签列表（实际应由请求传入）1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成Http请求Body1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "判断是否有其他异常1": {
+      "main": [
+        [
+          {
+            "node": "Wait 5s1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter1": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "1",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Milvus Vector Store2",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Milvus Vector Store2": {
+      "main": [
+        [],
+        []
+      ]
+    },
+    "Edit Fields5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7420da0c-da83-4a71-b0cf-34b666729477",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "GtW6P90lN6es2ezk",
+  "tags": []
+}

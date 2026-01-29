@@ -1,0 +1,620 @@
+{
+  "name": "LearningResource - Fetch Bilibili Playlist",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1984,
+        784
+      ],
+      "id": "fb8f6eb7-1bed-4e6e-8eb0-f28ed22cb0ea",
+      "name": "Batch Data Processing Loop"
+    },
+    {
+      "parameters": {
+        "path": "/api/v1/learning-resource/bilibili-playlist",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2432,
+        928
+      ],
+      "id": "7d1f2045-262b-42fd-b565-b29621ff7673",
+      "name": "Bilibili Playlist Request Webhook",
+      "webhookId": "d10373c6-0bc2-4f5d-87c1-a054cf9d6aae",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3OpbdSaTg1yNFBzm",
+          "name": "Hollow Knight"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        208,
+        736
+      ],
+      "id": "9e020779-0a39-472c-96fc-f1bda3c5ed29",
+      "name": "Respond to Webhook Request"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.full_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "={{ $json[\"user-agent\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -896,
+        784
+      ],
+      "id": "cd32d91a-3ce6-4b7b-bea7-d980ab03405d",
+      "name": "Request Bilibili Page Data",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 获取输入数据\nconst inputData = $input.all()[0]?.json || {};\n\n// 提取变量（带默认值处理）\nconst base_url = inputData.base_url || '';\nconst bvid = inputData.bvid || '';\n\n// 标准化 URL 拼接函数\nfunction buildUrl(base, path) {\n  // 1. 移除 base 末尾的斜杠\n  let cleanBase = base.replace(/\\/+$/, '');\n  \n  // 2. 移除 path 开头的斜杠\n  let cleanPath = path.replace(/^\\/+/, '');\n  \n  // 3. 安全拼接并返回\n  return cleanBase + '/' + cleanPath;\n}\n\n// 执行拼接\nconst full_url = buildUrl(base_url, bvid);\n\n// 返回结果（保留原始数据并添加新字段）\nreturn [{\n  json: {\n    ...inputData,  // 保留所有原始字段\n    full_url: full_url\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        784
+      ],
+      "id": "e6552a9f-ef81-43dc-ad21-d8f2130d5b63",
+      "name": "Construct Complete Bilibili Video URL",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 确保HTML数据路径正确\nconst html = items[0].json.data;\n\n// 1. 捕获__INITIAL_STATE__对象字符串\nconst regex = /<script>window\\.__INITIAL_STATE__=(.*?);\\(function\\(\\)\\{var s;/s;\nconst match = html.match(regex);\n\nif (!match || !match[1]) {\n  // 无法找到数据时，返回包含\"无效视频\"的json对象\n  return [{ json: { message: \"无效视频\" } }];\n}\n\nconst jsonString = match[1];\nlet playlist = [];\n\ntry {\n  const initialState = JSON.parse(jsonString);\n  \n  // 2. 逻辑分支处理\n  // --- 合集/播放列表页面：返回\"无效视频\" ---\n  if (initialState.sectionsInfo \n      && initialState.sectionsInfo.sections \n      && initialState.sectionsInfo.sections[0] \n      && initialState.sectionsInfo.sections[0].episodes) {\n    return [{ json: { message: \"无效视频\" } }];\n  \n  // --- 多P视频页面：提取分P数据 ---\n  } else if (initialState.videoData \n             && initialState.videoData.pages \n             && initialState.videoData.bvid !== undefined) {\n    \n    const pages = initialState.videoData.pages;\n    const bvid = initialState.videoData.bvid;\n    \n    // 单个视频（仅1个分P且page=1）：返回\"无效视频\"\n    if (pages.length === 1 && pages[0].page === 1) {\n      return [{ json: { message: \"无效视频\" } }];\n    } else {\n      // 多P视频：提取有效分P数据，包裹在json对象中\n      playlist = pages.map(page => ({\n        title: page.part,\n        durationInSeconds: page.duration,\n        page: page.page\n      })).filter(() => bvid !== \"\");\n      \n      // 返回包含playlist的json对象\n      return [{ json: { playlist: playlist } }];\n    }\n  \n  // --- 未知结构：返回\"无效视频\" ---\n  } else {\n    return [{ json: { message: \"无效视频\" } }];\n  }\n\n} catch (e) {\n  // 解析错误：保持错误信息在json对象中\n  return [{ \n    json: { \n      error: \"解析JSON数据时发生错误\", \n      details: e.message \n    } \n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        960
+      ],
+      "id": "48760a36-dcb8-4d70-b766-6320a38d78ae",
+      "name": "Parse Bilibili Page Playlist Data",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "38d30f09-8371-45ea-90d4-fb7a0ca4e2ae",
+              "name": "user-agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "type": "string"
+            },
+            {
+              "id": "2dcb9877-31a2-432f-8233-c2c8eb637835",
+              "name": "base_url",
+              "value": "https://www.bilibili.com/",
+              "type": "string"
+            },
+            {
+              "id": "7bb39220-e08b-44dc-8aac-e15e6b94038e",
+              "name": "bvid",
+              "value": "={{ $json.query.bvid }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1344,
+        784
+      ],
+      "id": "ebe6f159-55b5-4763-bd43-3be9f88e5bdf",
+      "name": "Set Request-Related Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2908a3a4-5405-4a6f-a1ba-6df4fa0d2bbf",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -672,
+        784
+      ],
+      "id": "b10aa5ca-ce09-401b-9fe1-fc4e234cde97",
+      "name": "Check for Errors in Request Results"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"code\": 40401,\n  \"msg\": \"Resource not found: No video exists for BVID '{{ $('Construct Complete Bilibili Video URL').item.json.bvid }}'.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -16,
+        640
+      ],
+      "id": "72476251-c0fb-413b-b41d-d594fa97d193",
+      "name": "Set \"Video Resource Not Found\" Response"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8f677bae-2700-4839-b150-6ad1623d8732",
+              "leftValue": "={{ $json.error.status }}",
+              "rightValue": "404",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        736
+      ],
+      "id": "b3df9e4f-342e-43a3-acba-58c6b7104908",
+      "name": "Check if Error Status Code is 404"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 50202,\n  \"msg\": \"Upstream service error: Failed to fetch data from Bilibili, please try again later.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -16,
+        832
+      ],
+      "id": "c2da6d79-deca-4e2c-969f-d42675311ca8",
+      "name": "Set \"Upstream Service Error\" Response"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "942e1d1a-e69f-4bd0-9272-d92f74d28381",
+              "leftValue": "={{ $json.query.bvid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2208,
+        928
+      ],
+      "id": "0cf04cd5-c3f5-4be2-be1a-280dafeaeb38",
+      "name": "Check if \"bvid\" Parameter is Empty"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'bvid' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -656,
+        1168
+      ],
+      "id": "8301d874-9686-4be2-a430-ec9fac2f81b2",
+      "name": "Set \"Request Parameter Error\" Response"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"code\": 0,\n  \"msg\": \"success\",\n  \"data\": \n    {{ $json.data }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -992,
+        432
+      ],
+      "id": "87826358-a716-417c-8265-7b9d26dc4dc3",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        688
+      ],
+      "id": "343f5a12-99e6-496e-86d4-9da4e143bf36",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e98862b4-c065-4d8a-bf47-798d85238099",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        960
+      ],
+      "id": "aaea7780-6e7b-4c22-bf6e-b415a19a7871",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 0,\n  \"msg\": \"success\",\n  \"data\": [\n    \n  ]  \n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -48,
+        992
+      ],
+      "id": "aa70e4f4-5588-4e78-b417-6a005b6a9c88",
+      "name": "Edit Fields1"
+    }
+  ],
+  "pinData": {
+    "Bilibili Playlist Request Webhook": [
+      {
+        "json": {
+          "headers": {
+            "root": "123456",
+            "user-agent": "Apifox/1.0.0 (https://apifox.com)",
+            "content-type": "application/json",
+            "accept": "*/*",
+            "host": "10.7.10.203:5678",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive"
+          },
+          "params": {},
+          "query": {
+            "bvid": "BV1jcu6z7ExM",
+            "requestId": "c7a7e7e3-1c7b-4b1f-8e4a-2b7c4b1d8f1a",
+            "timestamp": "1678886400000",
+            "caller\t": "Learning-Platform-Service"
+          },
+          "body": {},
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/bilibili-playlist",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Batch Data Processing Loop": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Request-Related Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bilibili Playlist Request Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check if \"bvid\" Parameter is Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Bilibili Page Data": {
+      "main": [
+        [
+          {
+            "node": "Check for Errors in Request Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construct Complete Bilibili Video URL": {
+      "main": [
+        [
+          {
+            "node": "Request Bilibili Page Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Bilibili Page Playlist Data": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Request-Related Fields": {
+      "main": [
+        [
+          {
+            "node": "Construct Complete Bilibili Video URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Errors in Request Results": {
+      "main": [
+        [
+          {
+            "node": "Parse Bilibili Page Playlist Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check if Error Status Code is 404",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set \"Video Resource Not Found\" Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Error Status Code is 404": {
+      "main": [
+        [
+          {
+            "node": "Set \"Video Resource Not Found\" Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set \"Upstream Service Error\" Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set \"Upstream Service Error\" Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if \"bvid\" Parameter is Empty": {
+      "main": [
+        [
+          {
+            "node": "Batch Data Processing Loop",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set \"Request Parameter Error\" Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set \"Request Parameter Error\" Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Batch Data Processing Loop",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "52fb27a7-1573-49b7-8cee-7939d5c52ae7",
+  "meta": {
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "n8nFTJBXfeSkByK9",
+  "tags": []
+}

@@ -1,0 +1,1275 @@
+{
+  "name": "LearningResource - blogs AssessExtract",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "=https://zzk.cnblogs.com/s?w={{ $json['body.searchTerms'] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "h-CN,zh;q=0.9"
+            },
+            {
+              "name": "Referer",
+              "value": "https://zzk.cnblogs.com/"
+            },
+            {
+              "name": "Cookie",
+              "value": "_ga=GA1.1.774365554.1703118533; Hm_lvt_866c9be12d4a814454792b1fd0fed295=1752568322,1752649836,1752714336; HMACCOUNT=28CFE8B800FE1B10; affinity=1752715169.203.1113.921201|a6728cc07008ec0fd0d6b7ff6028a867; .Cnblogs.AspNetCore.Cookies=CfDJ8Ct_7-Gh-gZNte6RB_khjDpvfTzKaQsM81ycl1PD8Fl5oj8WUswjWkeFqLd1Kvz-cux0ncZ1wkpl79grYbiLn7iEK5xAkcfk_iV_WnTkKvm-oq32pr-Lqftd-nUAA5eyuChM4AVh0K7cI2Wxvesoy8G3isOMBLdkWTOly3Lzr-JWBQyk9tLJBqwudfr7T9wW3VF9vqt6TvwZAAHqzpcrV08hM0uwqGG-50hRKdGZ6a6O92nmsZtReF1YJfusJ_pQm3ZoBFLxYfKXyoIM00AschibATn2pnhu2myVU12yur0P3_b4Zp7NbltrT76NP4SDo4msp_Nabu9KIiYfMYCmIosDkTnwiQMDb8Sb_U0Q4TXENew6x0EdmhJp-7MB5F_k-IN04H3-OP9Duhu0bCQ8EiDEB5VUI5AytuOVJnjhPfWboVFuJRJQfSJwxTzuLA7CYPsD3UxRyDDngsPajaIItiO_i-IS1dWZ0A1QTm-3N7AE5fkLKoM3FYX_y0BoJX9FMEtwQ_R-hGPtIoVZoNzsiDYRBBtE6iWaiJOOrnZ0rOnWchOQta-x9Slec-QiyYYmAg; .CNBlogsCookie=C219EB5928E8B1796D85B248D7051673CD9E106049A60F80BF1217226F011366790DD5C5DBCE988B85B7170C5BCB88F15E24E3A4E6C9A1FFB228AA89E001002E7234BC894A9E68DE5B5A099920069EB7D8002E0B5225E545FC75BCE675691A0720EF6CF1; Hm_lpvt_866c9be12d4a814454792b1fd0fed295=1752716378; _ga_M95P3TTWJZ=GS2.1.s1752716163$o20$g1$t1752716383$j55$l0$h0; _ga_3Q0DVSGN10=GS2.1.s1752716165$o1$g1$t1752716386$j58$l0$h0; __utma=59123430.774365554.1703118533.1752716546.1752716546.1; __utmc=59123430; __utmz=59123430.1752716546.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); __utmt=1; __utmb=59123430.1.10.1752716546"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1376,
+        2304
+      ],
+      "id": "377a5f28-950a-4d40-9e43-6a4a2b6bbd23",
+      "name": "HTTP Request",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "articles",
+              "cssSelector": "div.searchItem",
+              "returnValue": "html",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        -1152,
+        2304
+      ],
+      "id": "60d3a3ee-966b-45cf-899c-0ce34eda1022",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. 获取输入数据（你的数据格式是：[{ \"articles\": [HTML片段1, ...] }]）\nconst inputData = $input.all(); \nconsole.log(\"输入项目数：\", inputData.length);\n\n// 2. 提取所有文章信息\nconst results = [];\n\n// 遍历输入中的每个项目（通常只有1个项目包含articles数组）\ninputData.forEach(item => {\n  // 确保articles是数组（避免undefined报错）\n  if (item.json?.articles && Array.isArray(item.json.articles)) {\n    console.log(\"待处理文章数：\", item.json.articles.length);\n    \n    // 遍历每篇文章的HTML片段\n    item.json.articles.forEach(html => {\n      // 3. 提取标题（类名是searchItemTitle，去除<strong>标签）\n      const titleMatch = html.match(/<h3 class=\"searchItemTitle\">\\s*<a[^>]*>(.*?)<\\/a>\\s*<\\/h3>/is);\n      const title = titleMatch \n        ? titleMatch[1].replace(/<\\/?strong>/g, '').trim()  // 移除搜索词加粗标签\n        : \"未知标题\";\n\n      // 4. 提取URL（从a标签的href中）\n      const urlMatch = html.match(/<a target=\"_blank\" href=\"(https:\\/\\/www\\.cnblogs\\.com[^\\\"]+)\"/i);\n      const url = urlMatch ? urlMatch[1] : \"未知URL\";\n\n      // 5. 提取发布时间（类名是searchItemInfo-publishDate）\n      const timeMatch = html.match(/<span class=\"searchItemInfo-publishDate\">([\\d-]+)<\\/span>/i);\n      const publishTime = timeMatch ? timeMatch[1] : \"未知时间\";\n\n      // 6. 提取阅读量（类名是searchItemInfo-views）\n      const viewMatch = html.match(/<span class=\"searchItemInfo-views\">浏览\\((\\d+)\\)<\\/span>/i);\n      const viewCount = viewMatch ? parseInt(viewMatch[1]) : 0;\n\n      // 收集结果\n      results.push({\n        title: title,\n        url: url,\n        publishTime: publishTime,\n        viewCount: viewCount\n      });\n    });\n  }\n});\n\n// 3. 按n8n要求的格式返回（[{ json: { ... } }]）\nreturn results.map(info => ({ json: info }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -928,
+        2304
+      ],
+      "id": "86a6563e-c851-4933-a60d-f43053652dfe",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        864,
+        1952
+      ],
+      "id": "fbb4f929-a613-4642-a549-e056d7f58ff4",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/api/v1/learning-resource/cnblogs-articles/search",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1376,
+        1664
+      ],
+      "id": "8140633b-d9fd-46b7-94ed-6001d1022254",
+      "name": "Webhook",
+      "webhookId": "d10373c6-0bc2-4f5d-87c1-a054cf9d6aae",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3OpbdSaTg1yNFBzm",
+          "name": "Hollow Knight"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2656,
+        1552
+      ],
+      "id": "22d15213-8dad-4ddd-9af8-05469bcb9404",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1376,
+        1056
+      ],
+      "id": "a4ea00ac-a265-4e7d-97d2-c1e93ff66e82",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        1552
+      ],
+      "id": "44b5481c-66c6-4dc3-b579-d4379f0651a5",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f14c08e4-8c16-4a6b-8761-af5642853f23",
+              "leftValue": "={{ $json.body.payload.searchTerm }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "d33485bf-3803-40a7-b049-6cd1aba44200",
+              "leftValue": "={{ $json.body.payload.searchTerm }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1152,
+        1664
+      ],
+      "id": "68404615-9825-488d-a0d0-752ae1a08ccd",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'searchTerm' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2432,
+        1280
+      ],
+      "id": "e69315bc-5fdb-41d4-b846-fa01a9421f4e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "13471a44-9d63-45c5-9dfa-1dc4d6a59165",
+              "leftValue": "={{ $json.data }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c43ff42c-d449-4307-a8e1-223eb68835bb",
+              "leftValue": "={{ $json.data }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2208,
+        1552
+      ],
+      "id": "df670997-9325-4303-bdb0-aa177fe1b5ed",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\":60606,\n  \"msg\": \"'Data processing Failed: Data processing is error.'\",\n  \"data\": null\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2432,
+        1472
+      ],
+      "id": "7b9609da-8cd0-40f6-92f5-c261a9175934",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oauth.cnblogs.com/connect/token",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "client_id",
+              "value": "03c40256-62dc-4eaa-a8b0-ee17d8918881"
+            },
+            {
+              "name": "client_secret",
+              "value": "0Ma-p3BmlYz-53GWoImTK37twupR5eaU85ysbxROKjwtNdnVOLMQ-twfSkv8Vg9_6QEZxP9Dn6jnP_cd"
+            },
+            {
+              "name": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "name": "scope",
+              "value": "CnBlogsApi"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1984,
+        1936
+      ],
+      "id": "a105b1af-fb6d-4306-8a02-13e4541c83b1",
+      "name": "HTTP Request1",
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.cnblogs.com/api/ZzkDocuments/Blog?keyWords={{ $('Edit Fields2').item.json.body.payload.searchTerm }}&pageIndex={{ $('Split Out').item.json.pageNumbers }}&startDate={{ $('Edit Fields2').item.json.body.payload.startDate }}&endDate={{ $('Edit Fields2').item.json.body.payload.endDate }}&viewTimesAtLeast={{ $('Edit Fields2').item.json.body.payload.ViewCount }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2208,
+        2080
+      ],
+      "id": "b24efae1-56fa-4bbd-926b-214c4c4b8c6c",
+      "name": "HTTP Request2",
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4ea7c681-a48d-45d9-9f9a-bfef3312c682",
+              "leftValue": "={{ $json.body.payload.DateTimeRange }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c04cce42-7a52-47a6-834f-f7e14b187ca1",
+              "leftValue": "={{ $json.body.payload.DateTimeRange }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -480,
+        1952
+      ],
+      "id": "37b874d0-a1aa-472e-a544-a5d4cb62d9af",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1df33e9-d616-41ed-8c67-10ecbfe50aeb",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "bca78125-bee5-4fe8-9618-88707c323eee",
+              "name": "=body.payload.DateTimeRange",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "7c7213ee-a8c2-4e4d-a4c4-170ec872fefd",
+              "name": "body.payload.ViewCount",
+              "value": "={{ $json.body.payload.ViewCount }}",
+              "type": "string"
+            },
+            {
+              "id": "e69f0ff8-f08e-41a7-86fd-2d18fa218a67",
+              "name": "body.payload.DiggCount",
+              "value": "={{ $json.body.payload.DiggCount }}",
+              "type": "string"
+            },
+            {
+              "id": "fc99e7eb-9056-49e2-8ce3-cca8e09419fb",
+              "name": "body.payload.limit",
+              "value": "={{ $json.body.payload.limit }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -256,
+        2032
+      ],
+      "id": "74a9dac5-98f3-475b-add9-2b7cd92cda97",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6439e6c4-14ce-4a4a-8153-bcf564ade31d",
+              "leftValue": "={{ $json.body.payload.ViewCount }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "7cbd2b55-fa1f-418e-b0e2-7046b2994457",
+              "leftValue": "={{ $json.body.payload.ViewCount }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -32,
+        1952
+      ],
+      "id": "0886c86e-e1d5-4011-bca9-d3fd884607fd",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2800bb6-c0c5-4ad7-ba0e-5189c7a4f45a",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "52c906b9-b812-4d29-be3b-c7dedb771f35",
+              "name": "body.payload.DateTimeRange",
+              "value": "={{ $json.body.payload.DateTimeRange }}",
+              "type": "string"
+            },
+            {
+              "id": "baceac5c-4aca-4b36-806c-b8f13797c1ee",
+              "name": "=body.payload.ViewCount",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "67bbea5d-8b9b-4969-81d0-8da5c7905e62",
+              "name": "body.payload.DiggCount",
+              "value": "={{ $json.body.payload.DiggCount }}",
+              "type": "string"
+            },
+            {
+              "id": "7e25465c-8594-414d-9c60-2b6db3089d6d",
+              "name": "body.payload.limit",
+              "value": "={{ $json.body.payload.limit }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        192,
+        2032
+      ],
+      "id": "299fc515-333c-4ac6-b81c-95bf9c68d7ab",
+      "name": "Edit Fields5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "228049a4-4fb0-447e-844a-70b643295d65",
+              "leftValue": "={{ $json.body.payload.limit }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a87d403f-cf32-4f42-bd6d-406642903046",
+              "leftValue": "={{ $json.body.payload.limit }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        1952
+      ],
+      "id": "b2803e00-e0bb-49b7-a07e-db21ce74ecb4",
+      "name": "If5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ab0ef3ba-3906-4f1e-98bf-37554eb60ad1",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "d987fdd0-7888-41b4-8a52-a7e6d3112523",
+              "name": "body.payload.DateTimeRange",
+              "value": "={{ $json.body.payload.DateTimeRange }}",
+              "type": "string"
+            },
+            {
+              "id": "ef245268-9874-4c3b-8819-0b3942246f73",
+              "name": "body.payload.ViewCount",
+              "value": "={{ $json.body.payload.ViewCount }}",
+              "type": "string"
+            },
+            {
+              "id": "a61347e4-27dd-4fac-8b35-c77a26c2e43d",
+              "name": "body.payload.DiggCount",
+              "value": "={{ $json.body.payload.DiggCount }}",
+              "type": "string"
+            },
+            {
+              "id": "24060863-66c1-440d-be2d-ce9dcd0ae53a",
+              "name": "=body.payload.limit",
+              "value": "20",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        2032
+      ],
+      "id": "708a08cc-6d22-4a87-bd56-bf42c9346302",
+      "name": "Edit Fields7"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1e3ceca4-404b-4673-9d0b-dbb04e0d0a27",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "56fe70cd-f4a2-4ddb-8078-8cd3a87e3c84",
+              "name": "body.payload.DateTimeRange",
+              "value": "={{ $json.body.payload.DateTimeRange }}",
+              "type": "string"
+            },
+            {
+              "id": "44750b5b-6c15-49b4-97d0-61f49fd83484",
+              "name": "body.payload.ViewCount",
+              "value": "={{ $json.body.payload.ViewCount }}",
+              "type": "string"
+            },
+            {
+              "id": "3842f004-3651-4ec2-8dc1-a623658a5d84",
+              "name": "body.payload.limit",
+              "value": "={{ $json.body.payload.limit }}",
+              "type": "string"
+            },
+            {
+              "id": "ea231545-cfdd-4328-ab3e-8d9c9cf67b24",
+              "name": "body.payload.startDate",
+              "value": "={{ $json.body.payload.startDate }}",
+              "type": "string"
+            },
+            {
+              "id": "00964582-d1e8-4a3c-a408-9c51781871b2",
+              "name": "body.payload.endDate",
+              "value": "={{ $json.body.payload.endDate }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1088,
+        1952
+      ],
+      "id": "0e027399-8a3f-4eae-aae8-7adb0778e5cb",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 50202,\n  \"msg\": \"Upstream service error: Failed to fetch data from Cnblogs, please try again later.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2432,
+        2000
+      ],
+      "id": "fd8dbfcb-7cc7-45a6-a9e8-ad6747578726",
+      "name": "Edit Fields8"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 确保输入是数组（兼容单条/多条数据）\nconst inputItems = Array.isArray($input.all()) ? $input.all() : [$input.all()];\n\n// 计算总页数（每页15个）\nfunction calculateTotalPages(limit) {\n  const numLimit = Number(limit);\n  return (isNaN(numLimit) || numLimit <= 0) ? 0 : Math.ceil(numLimit / 15);\n}\n\n// 生成页码数组（如总页数2 → [1,2]）\nfunction generatePageNumbers(totalPages) {\n  if (totalPages <= 0) return []; // 总页数为0时返回空数组\n  return Array.from({ length: totalPages }, (_, i) => i + 1); // 生成1到totalPages的数组\n}\n\n// 处理每条数据\nconst outputItems = inputItems.map(item => {\n  // 从body.payload获取limit\n  const limit = item?.json?.body?.payload?.limit;\n  // 计算总页数\n  const totalPages = calculateTotalPages(limit);\n  // 生成页码数组\n  const pageNumbers = generatePageNumbers(totalPages);\n  \n  return {\n    json: {\n      ...item.json, // 保留原始数据\n      totalPages: totalPages, // 保留总页数（方便查看）\n      pageNumbers: pageNumbers, // 页码数组（核心需求）\n      pageSize: 15\n    }\n  };\n});\n\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        1952
+      ],
+      "id": "daeb933f-e463-44a4-9a23-6198c169d2c6",
+      "name": "Code2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "pageNumbers",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        1952
+      ],
+      "id": "27973241-c278-49b8-8f14-654a8154076e",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1760,
+        1952
+      ],
+      "id": "90e9397d-d9af-45f8-b948-ca88738f704f",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "maxItems": "={{ $('Code2').item.json.body.payload.limit }}"
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        1744
+      ],
+      "id": "8bee1264-9746-4547-a6e3-d3925ea4b720",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. 统一输入格式（兼容单条/多条输入）\nconst inputItems = Array.isArray($input.all()) \n  ? $input.all() \n  : [$input.all()];\n\n// 2. 清洗单条数据的函数（接收 data 里的原始对象）\nfunction cleanBlog(rawBlog) {\n  return {\n    Title: rawBlog.Title || \"\",\n    Content: rawBlog.Content || \"\",\n    UserName: rawBlog.UserName || \"\",\n    PublishTime: rawBlog.PublishTime || \"\",\n    VoteTimes: rawBlog.VoteTimes !== undefined \n      ? Number(rawBlog.VoteTimes) \n      : 0,\n    ViewTimes: rawBlog.ViewTimes !== undefined \n      ? Number(rawBlog.ViewTimes) \n      : 0,\n    CommentTimes: rawBlog.CommentTimes !== undefined \n      ? Number(rawBlog.CommentTimes) \n      : 0,\n    Uri: rawBlog.Uri || \"\",\n    Id: rawBlog.Id || \"\"\n  };\n}\n\n// 3. 提取所有嵌套的 data 数据，合并成一维数组\nconst allRawBlogs = inputItems.flatMap(item => {\n  // 从 item.json.data 里取数据（核心修正：处理嵌套结构）\n  return item.json.data || []; \n});\n\n// 4. 清洗所有数据\nconst cleanedBlogs = allRawBlogs.map(cleanBlog);\n\n// 5. 构建最终输出结构\nreturn [\n  {\n    json: {\n      code: 0,\n      msg: \"success\",\n      data: {\n        totalItems: cleanedBlogs.length,\n        blogs: cleanedBlogs\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        1664
+      ],
+      "id": "518acd1d-bd94-4f5c-94f2-f027b10f0532",
+      "name": "Code3",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7ae8ada6-599b-4167-8a75-6da7d684386e",
+              "leftValue": "={{ $json.body.payload.startDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "69095d13-15cb-4b90-8096-5fe968995637",
+              "leftValue": "={{ $json.body.payload.endDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -928,
+        1952
+      ],
+      "id": "815efa00-9266-4d20-8278-56d62470ffbf",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bea051ae-9f59-4da5-bd5a-b60c06a4124f",
+              "name": "body.payload.startDate",
+              "value": "null",
+              "type": "string"
+            },
+            {
+              "id": "4a650c17-d5e3-4aab-8c8e-205b36b3b952",
+              "name": "body.payload.endDate",
+              "value": "null",
+              "type": "string"
+            },
+            {
+              "id": "574cb5a9-2c99-4f14-b2ab-16500bafcff7",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "95f54847-a99b-40e2-bdd9-dd34f4357c85",
+              "name": "body.payload.DateTimeRange",
+              "value": "={{ $json.body.payload.DateTimeRange }}",
+              "type": "string"
+            },
+            {
+              "id": "04e7c555-db8e-4ab1-b9ac-265796fa09c1",
+              "name": "body.payload.ViewCount",
+              "value": "={{ $json.body.payload.ViewCount }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -704,
+        2032
+      ],
+      "id": "65385439-e55e-49e8-a776-ac547c3460c9",
+      "name": "Edit Fields1"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "root": "123456",
+            "user-agent": "Apifox/1.0.0 (https://apifox.com)",
+            "content-type": "application/json",
+            "accept": "*/*",
+            "host": "10.7.10.203:5678",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive",
+            "content-length": "329"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "meta": {
+              "requestId": "c7a7e7e3-1c7b-4b1f-8e4a-2b7c4b1d8f1a",
+              "timestamp": 1678886400000,
+              "caller": "Learning-Platform-Service"
+            },
+            "payload": {
+              "searchTerm": "Python",
+              "DateTimeRange": "OneMonth",
+              "ViewCount": 100,
+              "limit": 20
+            }
+          },
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/cnblogs-articles/search",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        []
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields5": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If5": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields7": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields8": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "421a37cd-3419-4b3c-9f0e-98245bdfd630",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "VJdkx7xu4BHco2yO",
+  "tags": []
+}

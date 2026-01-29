@@ -1,0 +1,284 @@
+{
+  "name": "ai助教",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/api/v1/learning-resource/AIP-Tutor-Bot",
+        "responseMode": "lastNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1136,
+        1952
+      ],
+      "id": "ec99038d-3dfd-4e35-adf7-9456e3fb9a0d",
+      "name": "Webhook",
+      "webhookId": "3ad312d2-dcda-4939-95b3-b5a88229abbe"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://dify.aipfuture.com/v1/chat-messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer app-NEFTfdaTETR5Ijxc1jsPg9iU"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.payload}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -112,
+        1936
+      ],
+      "id": "27489ea1-74ff-435f-934a-33af53dd6bfe",
+      "name": "HTTP Request2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 这个节点会创建一个名为 payload 的字段，包含要发送给Dify的数据\nconst payload = {\n  inputs: {},\n  query: $json.body.question,\n  //response_mode: \"streaming\",\n  user: $input.first().json.body.user_id,\n};\n\n// 将这个数据包返回给下一个节点\nreturn [{\n  json: {\n    payload: payload\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        2048
+      ],
+      "id": "6aae182c-8a2a-46fc-be03-aa737a44ed1e",
+      "name": "Build General Payload1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// $json.body 包含了从Webhook直接传过来的、您后端服务发送的完整、真实的原始数据包\nconst inputData = $json.body;\n\n// 1. 初始化变量\nlet projectContextString = \"\";\nlet studentProfileString = \"\";\n\n// 2. 统一处理学生技能画像 (student_profile)\n// 无论在哪种模式下，都先处理技能信息，以减少代码重复。\nif (inputData.skills && Array.isArray(inputData.skills) && inputData.skills.length > 0) {\n  studentProfileString = inputData.skills.map(s => {\n    // 【修正】原始 JSON 中技能名称的字段是 'title'，而非 'skill' 或 'skill_id'。\n    // 【优化】统一使用包含分数在内的更全面的技能描述格式。\n    return `${s.title}: ${s.level} (分数: ${s.score})`;\n  }).join('\\\\n');\n}\n\n// 3. 判断是否为项目模式，并构建项目上下文 (project_context)\n// 【修正】根据您的 JSON 结构，`projectdata` 是一个直接的数组，而不是一个包含 'data' 属性的对象。\nif (inputData.projectdata && Array.isArray(inputData.projectdata) && inputData.projectdata.length > 0) {\n  const project = inputData.projectdata[0];\n  \n  // 【优化】增加健壮性检查，确保 projectDetail 和 projectPositions 存在，避免因数据结构不完整而导致运行时错误。\n  if (project && project.projectDetail && project.projectPositions) {\n    // 【优化】使用模板字符串 (` `) 替代字符串拼接，使代码更清晰、更易于维护。\n    projectContextString = `\n项目名称: ${project.projectDetail.projectName}\n项目简介: ${project.projectDetail.projectDesc}\n---\n核心功能与技术突破:\n${project.projectDetail.description}\n---\n项目周期: ${project.projectDetail.projectDuration}\n担任职位: ${project.projectPositions.positionName}\n技术要求: ${project.projectPositions.skillRequirements}\n`;\n  }\n}\n\n// 4. 构建最终发送给下一个节点的 payload\nconst payload = {\n  inputs: {\n    // 确保这两个变量在任何情况下都是字符串\n    project_context: projectContextString,\n    student_profile: studentProfileString\n  },\n  query: inputData.question,\n  // response_mode: \"streaming\", // 根据您的需求，可以取消此行注释以使用流式响应\n  user: String(inputData.user_id) // 确保 user ID 是字符串类型，这是一个良好的实践\n};\n\n// 5. 将处理好的数据包返回给工作流的下一个节点\nreturn [{\n  json: {\n    payload: payload\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        1840
+      ],
+      "id": "c804b808-5e32-4eb4-b69e-5feaaf26f01f",
+      "name": "Build Project Payload1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "49e1f6be-0128-41b1-933b-2507ee0e882b",
+              "leftValue": "={{ $json.body.projectdata }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -640,
+        1952
+      ],
+      "id": "8c25a939-156e-4c0f-9dd5-2e7dd5774c79",
+      "name": "If1",
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "root": "123456",
+            "access-control-allow-origin": "*",
+            "access-control-allow-methods": "GET, POST, OPTIONS",
+            "access-control-allow-headers": "Content-Type, Authorization",
+            "user-agent": "Apifox/1.0.0 (https://apifox.com)",
+            "content-type": "application/json",
+            "accept": "*/*",
+            "host": "10.7.10.203:5678",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive",
+            "content-length": "3482"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "meta": {
+              "requestId": "c7a7e7e3-1c7b-4b1f-8e4a-2b7c4b1d8f1a",
+              "timestamp": 1678886400000,
+              "caller": "Learning-Platform-Service"
+            },
+            "user_id": 1001,
+            "skills": [
+              {
+                "title": "react",
+                "score": 85,
+                "level": "掌握"
+              },
+              {
+                "title": "java",
+                "score": 72,
+                "level": "熟练"
+              },
+              {
+                "title": "python",
+                "score": 60,
+                "level": "了解"
+              }
+            ],
+            "projectdata": [
+              {
+                "projectDetail": {
+                  "projectId": "6efeedb3-d206-46df-a1dd-abd8171c7fd9",
+                  "conversationId": "1947194413224488962",
+                  "projectName": "学生作业管理系统",
+                  "projectDesc": "智能化项目需求说明书核心内容。",
+                  "description": "# 项目详情摘要\n\n## 一、项目背景与意义\n**立项原因**：市场对智能化管理工具的需求不断增长，企业在数据处理和决策支持方面面临挑战。  \n**战略价值**：本项目将提升业务运营效率，改善用户体验，推动技术创新。  \n**目标用户**：主要面向中小企业管理人员及数据分析师。\n\n## 二、核心功能\n1. 主模块A\n   - 子功能A1\n     - 特性：实时数据处理\n     - 特性：多格式导出\n   - 子功能A2\n     - 特性：智能推荐算法\n2. 主模块B\n   - 子功能B1\n     - 特性：权限分级管理\n\n## 三、开发意义\n**技术突破**：项目采用基于微服务架构，集成智能分析算法。  \n**行业影响**：推动行业数字化转型，优化业务流程效率。  \n**预期成果**：实现运营成本降低30%，用户满意度提升至95%。",
+                  "projectDuration": "6个月",
+                  "status": "NOT_STARTED",
+                  "recruitIntro": "加入我们，共同打造未来！我们的项目致力于通过创新科技解决社会痛点，提升生活质量。我们追求卓越，倡导团队合作，欢迎充满激情与创意的技术精英加入。无论你是擅长人工智能、大数据，还是前端开发，我们期待你的独特视角与技能来推动项目进步。一起实现科技与人文的完美结合，让我们的创新成果惠及更多人。你将不仅仅是团队的一员，更是改变世界的推动者！立即加入我们，共创辉煌未来！",
+                  "recruitInvIntro": "我们诚邀您的合作，共同开拓市场空白的智能健康管理领域。我们的项目依托于独特的AI技术，实现精准健康监测和个性化服务，填补了现有市场的空缺。根据市场研究，未来五年，智能健康市场预计将以20%的年复合增长率迅速扩张。投资于本项目，将享有丰厚的股权回报与持续的利润分成。我们坚信，通过合作，您将不仅获得可观的投资回报，更将为推动社会健康管理的进步贡献力量。加入我们，共创美好未来！",
+                  "image": "http://10.7.10.154:9000/aip/2025/07/17/56df76b9d93b42f4ab98cb0350421d88.jpg",
+                  "createBy": 1,
+                  "loginIp": "10.7.10.120",
+                  "createDept": null
+                },
+                "projectPositions": {
+                  "positionId": "a855c43d-8c26-4461-909a-1eb5f202bcf4",
+                  "positionName": "测试工程师",
+                  "projectId": "6efeedb3-d206-46df-a1dd-abd8171c7fd9",
+                  "recruitmentCount": 1,
+                  "skillRequirements": "Selenium, Python, API Testing",
+                  "createDept": null,
+                  "updateBy": null
+                }
+              }
+            ],
+            "question": "java怎么学"
+          },
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/AIP-Tutor-Bot",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build General Payload1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Project Payload1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Build Project Payload1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build General Payload1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "77603855-3689-4d1d-9869-d01c94edf176",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "KLKd9om6juLTcsls",
+  "tags": []
+}

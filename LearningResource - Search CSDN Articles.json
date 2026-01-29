@@ -1,0 +1,1105 @@
+{
+  "name": "LearningResource - Search CSDN Articles",
+  "nodes": [
+    {
+      "parameters": {
+        "batchSize": 3,
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2704,
+        -352
+      ],
+      "id": "f2d6cf8e-5102-4912-b96b-899ab0fa4276",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/api/v1/learning-resource/csdn-articles/search",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -4048,
+        -112
+      ],
+      "id": "49043ec0-025d-412b-8411-aa58e763b015",
+      "name": "Webhook",
+      "webhookId": "d10373c6-0bc2-4f5d-87c1-a054cf9d6aae",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3OpbdSaTg1yNFBzm",
+          "name": "Hollow Knight"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -1808,
+        -544
+      ],
+      "id": "e99e0c16-bc0e-4110-98d2-b3402d424a35",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "log",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -2480,
+        -736
+      ],
+      "id": "6140b204-57fc-4e7b-a4b6-603ded6a1409",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "url": "https://so.csdn.net/api/v3/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.body.payload.searchTerm }}"
+            },
+            {
+              "name": "s",
+              "value": "={{ $json.body.payload.s }}"
+            },
+            {
+              "name": "t",
+              "value": "blog"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2256,
+        -352
+      ],
+      "id": "cdb60745-addd-499a-921b-301a9553eb51",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ac40d371-515a-4a15-b690-fae024454983",
+              "leftValue": "={{ $json.vip_view_auth }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -1808,
+        -352
+      ],
+      "id": "c6e591ba-84ab-41d8-afc7-2d7fc990f551",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "result_vos",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -2032,
+        -352
+      ],
+      "id": "4e02b601-e451-4ea3-b3a1-d1c328b89b44",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Referer",
+              "value": "https://so.csdn.net/"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3824,
+        -1408
+      ],
+      "id": "78f6a097-510c-4137-868a-fbcbeccd0c42",
+      "name": "文章内容http请求",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "// 读取输入的原始文章数据（兼容多条数据）\nconst rawArticles = $input.all().map(item => item.json);\n\n// 清洗单条数据的函数\nfunction cleanArticle(article) {\n  // 去除 HTML 标签（如 <em>）\n  const stripTags = (str) => str ? str.replace(/<\\/?em>/g, '').trim() : '';\n  \n  // 提取并处理标签，增加类型检查\n  const extractTags = (tagStr) => {\n    if (typeof tagStr !== 'string') {\n      console.log(`Invalid tagStr type: ${typeof tagStr}, value: ${tagStr}`);\n      return []; // 非字符串类型返回空数组\n    }\n    return tagStr.split(';').filter(tag => tag.trim() !== '');\n  };\n\n  return {\n    \"url\": article.url || \"\",\n    \"title\": stripTags(article.title),\n    \"blogID\": article.id || \"\",\n    \"authorName\": `${article.author || \"\"}（昵称：${article.nickname || \"\"}）`,\n    \"publishTimestamp\": article.create_time || 0,\n    \"readCount\": String(article.view || 0),\n    \"favoriteCount\": String(article.collections || 0),\n    \"likeCount\": String(article.digg || 0),\n    \"tag\": extractTags(article.search_tag),\n    \"description\": stripTags(article.description || article.digest || \"\")\n  };\n}\n\n// 批量处理所有文章并返回指定格式\nconst cleanedArticles = rawArticles.map(cleanArticle);\n\nreturn [{\n  json: {\n    \"totalItems\": cleanedArticles.length,\n    \"articles\": cleanedArticles\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        -192
+      ],
+      "id": "ff99548d-19a7-460e-b621-ae279483953d",
+      "name": "Code2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "article_content",
+              "cssSelector": "#content_views"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        -3600,
+        -1408
+      ],
+      "id": "86675468-3ce6-4c74-a251-b4c659dde306",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. 获取所有输入数据\nconst allArticles = $input.all(); \nconsole.log('待处理文章总数:', allArticles.length);\n\n// 2. 遍历每个文章，仅保留 content 字段\nconst processedArticles = allArticles.map(item => {\n  const originalArticle = item.json; \n  const content = originalArticle.article_content || originalArticle.content || \"无正文\";\n  \n  // 3. 只返回 content 字段\n  return {\n    content: content\n  };\n});\n\n// 4. 返回处理后的文章数组\nreturn processedArticles.map(article => ({ json: article }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3376,
+        -1408
+      ],
+      "id": "b42dbbdc-940a-4b4f-992a-65a3ed824d7d",
+      "name": "Code3"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  // 检查是否有至少两个输入项（Mode 正确时，items 会包含两个输入）\n  if (items.length < 2) {\n    throw new Error(\"需要两个输入节点，请检查上游连接\");\n  }\n\n  // 第一个输入：基本信息 + URL（假设是上游第一个节点）\n  const infoNode = items[0].json || {}; \n  const basicInfo = infoNode[\"对应信息\"] || {}; // 提取「对应信息」\n  const url = infoNode.url || \"\"; // 提取 URL\n\n  // 第二个输入：文章内容（假设是上游第二个节点）\n  const contentNode = items[1].json || {}; \n  const content = contentNode.content || \"\"; // 提取文章内容\n\n  // 合并输出（只返回一个结果，合并两个输入的数据）\n  return [\n    {\n      json: {\n        \"基本信息\": basicInfo,\n        \"URL\": url,\n        \"文章内容\": content\n      }\n    }\n  ];\n} catch (error) {\n  console.error(\"合并失败：\", error.message);\n  return [{\"json\": {\"error\": error.message}}];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4048,
+        -960
+      ],
+      "id": "de9ccdd8-8726-42c6-877c-b08a0d61b635",
+      "name": "Code4"
+    },
+    {
+      "parameters": {
+        "batchSize": 3,
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -4048,
+        -1632
+      ],
+      "id": "a97e3549-e53c-4b28-9be7-3f6a4335180b",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -4048,
+        -1408
+      ],
+      "id": "d922a0cf-604b-4b89-8017-cf6c4979ab2b",
+      "name": "Wait",
+      "webhookId": "d93bd9c0-b52f-4dd1-ab2f-9cba2ed04c66"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -4048,
+        -1184
+      ],
+      "id": "78957641-c8a1-4bde-9a02-4274b6bd035b",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "930cc120-35f8-4cf5-a229-43225d809bd6",
+              "leftValue": "={{ $json.body.payload.searchTerm }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "0890776e-6bb7-4f56-8cb3-dd95135e181f",
+              "leftValue": "={{ $json.body.payload.searchTerm }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3824,
+        -112
+      ],
+      "id": "fe743613-3055-41da-80a2-f4c0143892a7",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'searchTerm' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2032,
+        128
+      ],
+      "id": "7431c2b1-cd72-4ce0-923f-34c1c4a23126",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "41f8afd8-5ddb-40e6-81fe-d130d018b746",
+              "leftValue": "={{ $json.body.payload.s }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "b5642fdb-e622-4641-828b-3b680b53d64b",
+              "leftValue": "={{ $json.body.payload.s }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3600,
+        -352
+      ],
+      "id": "533f426a-c24f-4090-af72-381fe9f12edb",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "04319553-1fc9-4f5f-8dfe-b57ab4200908",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "aa897e43-546f-4430-b896-7e7a6e999310",
+              "name": "=body.payload.s",
+              "value": "0",
+              "type": "string"
+            },
+            {
+              "id": "b8e9128d-509c-4ed9-97dc-938e53eedb2c",
+              "name": "body.payload.limit",
+              "value": "={{ $json.body.payload.limit }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3376,
+        -16
+      ],
+      "id": "5c142268-863a-4e20-b51e-0a4b1f013aff",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9d6a80bc-3e0c-4558-8fba-d18e1faa2cab",
+              "leftValue": "={{ $json.body.payload.limit }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4b70d1c8-f32a-4f2c-a812-5c4cb37c2bfb",
+              "leftValue": "={{ $json.body.payload.limit }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3152,
+        -352
+      ],
+      "id": "893b13ca-702f-4503-8a92-c4d0e35cb78d",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "01999c9d-d8a7-4a79-acaf-3a4107a4c577",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "96ad6d74-3a59-4d79-913b-0e06c83f9ce1",
+              "name": "body.payload.s",
+              "value": "={{ $json.body.payload.s }}",
+              "type": "string"
+            },
+            {
+              "id": "d876acb1-c886-4678-8de2-8e8cdaa08b05",
+              "name": "body.payload.limit",
+              "value": "=10",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2928,
+        -16
+      ],
+      "id": "3818b099-b670-4fe5-9afd-d46ea411532d",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4aa1bab2-8a76-431c-81ea-605a2f7fdd3e",
+              "name": "limit",
+              "value": "={{ $json.body.payload.limit }}",
+              "type": "string"
+            },
+            {
+              "id": "cd182047-7914-4823-85f7-f57147923083",
+              "name": "body.payload.searchTerm",
+              "value": "={{ $json.body.payload.searchTerm }}",
+              "type": "string"
+            },
+            {
+              "id": "2d4848cb-1bd7-494d-9f07-8c52678780b6",
+              "name": "body.payload.s",
+              "value": "={{ $json.body.payload.s }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2480,
+        -352
+      ],
+      "id": "59e5e930-48d8-40db-b323-118be5d6682f",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "maxItems": "={{ $('Edit Fields3').item.json.limit }}"
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        -352
+      ],
+      "id": "86cda8a2-f4a6-4e25-bb2b-054768e0b55a",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 50202,\n  \"msg\": \"Upstream service error: Failed to fetch data from CSDN, please try again later.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2032,
+        -160
+      ],
+      "id": "b7f2b21a-24d4-4746-b02e-d19a06ce753a",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ef2aac9b-a5de-46d5-b195-b6a6b68d4130",
+              "leftValue": "={{ $json.log }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2256,
+        -736
+      ],
+      "id": "2831d979-8fbf-4e4c-847f-327295777e25",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\":60606,\n  \"msg\": \"'Data processing Failed: Data processing is error.'\",\n  \"data\": null\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2032,
+        -544
+      ],
+      "id": "8e3a6e5c-a868-4aa5-bb36-38f0f6528895",
+      "name": "Edit Fields5"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"code\": 0,\n  \"msg\": \"success\",\n  \"data\": {\n    \"totalItems\": {{ $json.log[0].totalItems }},\n    \"blogs\": {{ $json.log[0].articles }}\n  }\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2032,
+        -736
+      ],
+      "id": "54032035-e53f-42eb-ab38-eb154c94a5fa",
+      "name": "Edit Fields6"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "65c0ff7b-f882-4668-9846-23d052fbd904",
+              "leftValue": "={{ $json.create_time }}",
+              "rightValue": "={{ $('If2').item.json.body.payload.startDate }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "e49a833a-b296-4f93-b335-e125a45a02b4",
+              "leftValue": "={{ $json.create_time }}",
+              "rightValue": "={{ $('If2').item.json.body.payload.endDate }}",
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -1360,
+        -464
+      ],
+      "id": "b827415b-6213-41a0-98d4-c6ac971821c0",
+      "name": "Filter1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8b0fad71-b6e0-477f-a648-787d2c23f986",
+              "leftValue": "={{ $('If2').item.json.body.payload.startDate }}",
+              "rightValue": "={{ $json.body.payload.startDate }}",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "31bfd888-6b24-4569-b20d-d74b988d37c2",
+              "leftValue": "={{ $('If2').item.json.body.payload.startDate }}",
+              "rightValue": "={{ $json.body.payload.startDate }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ff9dff67-07a9-473e-bcc0-118f17de0b83",
+              "leftValue": "={{ $('If2').item.json.body.payload.endDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "95dc31fb-8828-4c9c-be69-db1fdc42d716",
+              "leftValue": "={{ $('If2').item.json.body.payload.endDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1584,
+        -352
+      ],
+      "id": "600a8d41-de58-4361-be6d-37b9c090adf6",
+      "name": "If4"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "accept": "application/json, application/yaml, application/*+json",
+            "content-type": "application/json",
+            "root": "123456",
+            "user-agent": "Java/17.0.12",
+            "host": "10.7.10.203:5678",
+            "connection": "keep-alive",
+            "content-length": "245"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "payload": {
+              "searchTerm": "竞品分析入门指南",
+              "s": "new",
+              "endDate": "1754495999000",
+              "limit": 20,
+              "startDate": "1754409600000"
+            },
+            "meta": {
+              "caller": "Learning-Center-API",
+              "requestId": "339d7307-f6a9-4c8b-ab25-6a78b4a580b4",
+              "timestamp": 1754531032162
+            }
+          },
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/csdn-articles/search",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "文章内容http请求": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "文章内容http请求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields6",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields6": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter1": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "Filter1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a57d9f04-72ab-43e2-b3ae-1a0290825d26",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "9FKQyPcKnkTsNvpK",
+  "tags": []
+}

@@ -1,0 +1,765 @@
+{
+  "name": "LearningResource - Generate SearchTerms",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        48
+      ],
+      "id": "4b6047ec-5832-4de7-a7ff-31d964f651ba",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "PzntduMJthTLxbRd",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/api/v1/learning-resource/search-terms",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        -80
+      ],
+      "id": "6754b5be-ab76-437b-87f1-d9862f62a26b",
+      "name": "LearningResourceSearchWebhook",
+      "webhookId": "d7b027a8-12e5-4da5-9942-e52cf8df61e3",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3OpbdSaTg1yNFBzm",
+          "name": "Hollow Knight"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.payload }}",
+        "options": {
+          "systemMessage": "=你是一个专业的搜索词生成专家，擅长根据用户需求生成结构化的关键词列表。请严格按照以下规则生成 JSON 格式的数据：  \n\n1. 输入参数\n(1)核心能力标签：{{ $json.body.payload.capabilityLabel }}（示例：Python 异步编程，你的每个关键词的生成都应保证围绕此）  \n(2)技能水平：{{ $json.body.payload.skillLevel }}（决定内容深度）  \n   - beginner：初级（入门教程、基础概念）  \n   - intermediate：中级（进阶指南、实战技巧）  \n   - advanced：高级（底层原理、优化方案）  \n(3)数量限制：{{ $json.body.payload.limit }}（每个分类的关键词数量严格等于该值）  \n\n2. 关键词分类逻辑\n所有生成的关键词分为 3 类，每类需符合特定定位：\n（1）Tutorials（教程类）\n 定位：面向学习者的入门,巩固材料，该领域最基础的核心概念，和实际部署所需的配置项和方案。\n 生成规则：包含“入门”“教程”“基础”和该领域下的基础核心概念及配置工具等词（如 Python 异步编程入门）。\n（2）Deep Dives（原理类）\n定位：面向希望理解底层机制的用户。\n生成规则：包含“科普”“原理”“机制”“源码”“架构”等词（如 asyncio 事件循环源码解析）。\n（3）Best Practices（实践类）\n定位：面向需要优化代码的开发者。\n生成规则：需包含“技巧”“最佳实践”“避坑”“优化”等词（如 异步编程性能优化技巧）。也可加入“高并发”“分布式”等高级场景词。\n\n3. 输出结构\n{  \n  \"data\": {  \n    \"tutorials\": [/* 教程类，数量=limit */],  \n    \"deepDives\": [/* 原理剖析类（如底层机制、核心技术），数量=limit */],  \n    \"bestPractices\": [/* 实践技巧类（如最佳实践、避坑方案），数量=limit */]  \n  }  \n} \n\n各分类参考示例：  \n- tutorials：Python 异步编程入门教程、asyncio aiohttp 新手指南、uvloop性能优化配置\n- deepDives：Python 异步编程底层原理、asyncio 事件循环详解、信号量控制原理\n- bestPractices：Python 异步编程最佳实践、如何避免异步代码陷阱、高并发连接优化"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        -304
+      ],
+      "id": "8d990f7c-e8c9-4c94-b81b-604332642aaf",
+      "name": "SearchTermsGenerationAgent",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 从 n8n 输入流中获取所有消息项\nconst inputItems = $input.all();\nconst outputItems = [];\n\nfor (const item of inputItems) {\n  // 1. 提取大模型输出的 Markdown 代码块\n  const modelOutput = item.json.output;\n  if (typeof modelOutput !== \"string\") {\n    outputItems.push({ json: { error: \"Invalid input: output is not a string\" } });\n    continue;\n  }\n\n  // 2. 清洗 Markdown 代码块标记（移除 ```json、换行、结尾标记）\n  const cleanJsonStr = modelOutput\n    .replace(/^```json|\\n|```$/g, \"\") // 精准匹配代码块首尾及换行\n    .trim();\n\n  try {\n    // 3. 解析 JSON 并提取 data 字段\n    const parsedData = JSON.parse(cleanJsonStr);\n    item.json = parsedData.data; // 替换为目标结构\n    outputItems.push(item);\n  } catch (parseError) {\n    outputItems.push({ json: { error: `JSON parse failed: ${parseError.message}` } });\n  }\n}\n\n// n8n 要求返回消息数组\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1952,
+        -304
+      ],
+      "id": "2249b56f-2a55-43ee-bc78-5c702d9c833d",
+      "name": "SearchTermsJSONParser",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2624,
+        -80
+      ],
+      "id": "825d4463-99a0-425e-93b4-62c96a4f8060",
+      "name": "SearchResponseSender"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c3c8ec93-8927-48a9-86b7-e79b95744175",
+              "leftValue": "={{ $json.body.payload.capabilityLabel }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "dff21747-21cc-4934-9583-06856405bc96",
+              "leftValue": "={{ $json.body.payload.capabilityLabel }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        -80
+      ],
+      "id": "b9681f98-a35c-4738-9de2-b1830061c294",
+      "name": "ValidateCapabilityLabel"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7da2379b-4b83-4124-86ce-6d2bdde48780",
+              "leftValue": "={{ $json.body.payload.skillLevel }}",
+              "rightValue": "advanced",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "b0aad9fc-7228-4325-8e20-eecf4fc7ebc8",
+              "leftValue": "={{ $json.body.payload.skillLevel }}",
+              "rightValue": "intermediate",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "aacdabb2-a2af-4174-957e-1876ea91c47b",
+              "leftValue": "={{ $json.body.payload.skillLevel }}",
+              "rightValue": "beginner",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1328,
+        -176
+      ],
+      "id": "e628f851-04b5-44bc-a84a-2ec848894b2f",
+      "name": "ValidateSkillLevelFormat"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'capabilityLabel' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2400,
+        208
+      ],
+      "id": "30557cd7-7dea-4b1f-94e0-dc03336fdff7",
+      "name": "RequiredParamMissingError"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'skillLevel' field is invalid.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2400,
+        16
+      ],
+      "id": "556514be-9c93-4b51-8262-beb655429e0d",
+      "name": "InvalidSkillLevelError"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"code\": 0,\n  \"msg\": \"success\",\n  \"data\": {\n      \"tutorials\":{{ $json.tutorials }},\n      \"deepDives\":{{ $json.deepDives }},\n      \"bestPractices\":{{ $json.bestPractices }}\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2400,
+        -400
+      ],
+      "id": "661d2062-7f28-4b12-85ed-124ac0b5a788",
+      "name": "CleanseAndFormatResults"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"code\": 50201,\n  \"msg\": \"Upstream service error: Search term generation service temporarily unavailable, please try again later.\",\n  \"data\": null\n} ",
+        "includeOtherFields": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2400,
+        -208
+      ],
+      "id": "73694a9d-3eb8-411a-9ac4-dd3ee4261527",
+      "name": "UpstreamDependencyError"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c2e55efe-1042-42e4-af9f-f4dc20f5008e",
+              "leftValue": "={{ $json.body.payload.limit }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ed22086f-ab7f-4638-9123-7055d815026c",
+              "leftValue": "={{ $json.body.payload.limit }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        -176
+      ],
+      "id": "840d733c-03ec-42fc-844b-a94be95a2c97",
+      "name": "limitrebuild"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1b002fff-6e5f-4163-be94-e9fdfb69e8e0",
+              "name": "body.payload.capabilityLabel",
+              "value": "={{ $('LearningResourceSearchWebhook').item.json.body.payload.capabilityLabel }}",
+              "type": "string"
+            },
+            {
+              "id": "950568da-a807-4a8a-b5be-83a5ef8b9cc4",
+              "name": "body.payload.skillLevel",
+              "value": "={{ $('LearningResourceSearchWebhook').item.json.body.payload.skillLevel }}",
+              "type": "string"
+            },
+            {
+              "id": "6bbfef96-b74b-42cf-9020-71c6d12658a6",
+              "name": "body.payload.limit",
+              "value": "5",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        48
+      ],
+      "id": "fdebe1db-4181-4450-8a8e-05873a25f2b9",
+      "name": "limitrebuild1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fed5d6bc-b1d0-46a5-827a-81e2fd94aa27",
+              "leftValue": "={{ $json.body.payload.skillLevel }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "76460567-a274-4152-b9ac-00243144d6bd",
+              "leftValue": "={{ $json.body.payload.skillLevel }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        -176
+      ],
+      "id": "f105c642-5acf-4423-bdbc-16f5f4ec3d90",
+      "name": "skilllvvelrebuild"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "afabd386-85c2-4962-a92f-7b7d9d4d50f0",
+              "name": "body.payload.capabilityLabel",
+              "value": "={{ $json.body.payload.capabilityLabel }}",
+              "type": "string"
+            },
+            {
+              "id": "981da402-26a8-4445-b1aa-04e0ffe6b5e2",
+              "name": "body.payload.skillLevel",
+              "value": "=beginner",
+              "type": "string"
+            },
+            {
+              "id": "a7a8aa24-9c1c-4d68-85fb-cdbfcf6b9155",
+              "name": "body.payload.limit",
+              "value": "={{ $json.body.payload.limit }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1104,
+        -256
+      ],
+      "id": "6e80ea0f-1f6d-409d-8b6b-4c4d09b228ca",
+      "name": "skillrebuild"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6c30d6cb-4717-4938-82f3-de7a54c2f350",
+              "leftValue": "={{ $json.tutorials }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c8dbb0fe-96e9-4fec-b93e-8ca4c08bf035",
+              "leftValue": "={{ $json.tutorials }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4922b5aa-c97e-4967-80a8-4be8dc46e886",
+              "leftValue": "={{ $json.deepDives }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "9ec4220c-0a23-408a-a3b0-a995b1a0479a",
+              "leftValue": "={{ $json.deepDives }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "e025f6b1-c2dd-40a4-ac06-b1eebb3808cc",
+              "leftValue": "={{ $json.bestPractices }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "0d530d4f-09fd-44e4-853c-fcbbd60c701f",
+              "leftValue": "={{ $json.bestPractices }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        -304
+      ],
+      "id": "41a32ac8-ba83-4f45-b1dc-9503446dea9b",
+      "name": "workconcert"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        432
+      ],
+      "id": "08a6f539-3ce3-4d59-ad45-1513f1507ddf",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rEr4QKfc9fKcHID3",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "LearningResourceSearchWebhook": [
+      {
+        "json": {
+          "headers": {
+            "root": "123456",
+            "user-agent": "Apifox/1.0.0 (https://apifox.com)",
+            "content-type": "application/json",
+            "accept": "*/*",
+            "host": "10.7.10.203:5678",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive",
+            "content-length": "276"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "meta": {
+              "requestId": "c7a7e7e3-1c7b-4b1f-8e4a-2b7c4b1d8f1a",
+              "timestamp": 1678886400000,
+              "caller": "Learning-Platform-Service"
+            },
+            "payload": {
+              "capabilityLabel": "Python 异步编程"
+            }
+          },
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/search-terms",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "SearchTermsGenerationAgent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LearningResourceSearchWebhook": {
+      "main": [
+        [
+          {
+            "node": "ValidateCapabilityLabel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchTermsGenerationAgent": {
+      "main": [
+        [
+          {
+            "node": "SearchTermsJSONParser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchTermsJSONParser": {
+      "main": [
+        [
+          {
+            "node": "workconcert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ValidateCapabilityLabel": {
+      "main": [
+        [
+          {
+            "node": "limitrebuild",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RequiredParamMissingError",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ValidateSkillLevelFormat": {
+      "main": [
+        [
+          {
+            "node": "SearchTermsGenerationAgent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "InvalidSkillLevelError",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RequiredParamMissingError": {
+      "main": [
+        [
+          {
+            "node": "SearchResponseSender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InvalidSkillLevelError": {
+      "main": [
+        [
+          {
+            "node": "SearchResponseSender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CleanseAndFormatResults": {
+      "main": [
+        [
+          {
+            "node": "SearchResponseSender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpstreamDependencyError": {
+      "main": [
+        [
+          {
+            "node": "SearchResponseSender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "limitrebuild": {
+      "main": [
+        [
+          {
+            "node": "skilllvvelrebuild",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "limitrebuild1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "limitrebuild1": {
+      "main": [
+        [
+          {
+            "node": "skilllvvelrebuild",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "skilllvvelrebuild": {
+      "main": [
+        [
+          {
+            "node": "ValidateSkillLevelFormat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "skillrebuild",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "skillrebuild": {
+      "main": [
+        [
+          {
+            "node": "ValidateSkillLevelFormat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "workconcert": {
+      "main": [
+        [
+          {
+            "node": "CleanseAndFormatResults",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "UpstreamDependencyError",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fc8719eb-78e8-47b3-af42-c467c8393224",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "QyjqwlTxf3jP4Ttz",
+  "tags": []
+}

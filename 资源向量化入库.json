@@ -1,0 +1,431 @@
+{
+  "name": "资源向量化入库",
+  "nodes": [
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={\n    \"title\": {{ $json.body.payload.suggested_title }},\n    \"description\": {{ $json.body.payload.description }},\n    \"content\": {{ $json.body.payload.MainContent }},\n    \"location\": {{ $json.body.payload.url }},\n    \"level\": {{ $json.body.payload.difficulty_level }},\n    \"genre\": 2,\n    \"inSite\": 2,\n    \"skillId\": {{ $json.body.payload.primary_skills }},\n    \"addition\": {{ JSON.stringify($json.body.payload.addition) }}\n}",
+        "options": {}
+      },
+      "id": "a818e2c8-d1ae-48f5-855c-b9514004373c",
+      "name": "1",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "position": [
+        352,
+        768
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "chunkSize": 6000,
+        "options": {}
+      },
+      "id": "762de76d-f4ba-467a-9d44-2cd375842524",
+      "name": "Recursive Character Text Splitter1",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "position": [
+        448,
+        976
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        224,
+        768
+      ],
+      "id": "f58edcfa-dcae-4a2a-884a-f89a683b1ca1",
+      "name": "Embeddings Google Gemini2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rEr4QKfc9fKcHID3",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "milvusCollection": {
+          "__rl": true,
+          "value": "recource_vector",
+          "mode": "list",
+          "cachedResultName": "recource_vector"
+        },
+        "options": {
+          "clearCollection": false
+        }
+      },
+      "id": "f1778a57-a2bf-4fb3-ad14-e66bbf3c677a",
+      "name": "Milvus Vector Store2",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreMilvus",
+      "position": [
+        240,
+        544
+      ],
+      "typeVersion": 1.1,
+      "credentials": {
+        "milvusApi": {
+          "id": "mMhNWBM1ScqYyxQ1",
+          "name": "Milvus account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api/v1/learning-resource/recoursevectort",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        240
+      ],
+      "id": "ef114316-7aeb-43e0-999c-b776fc00d27c",
+      "name": "Webhook",
+      "webhookId": "3f49bc04-450a-44a5-8e1e-5ca220eed3e3",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3OpbdSaTg1yNFBzm",
+          "name": "Hollow Knight"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "[\n  {\n  \"code\": 0,\n  \"msg\": \"success\"\n  }\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        752,
+        240
+      ],
+      "id": "2f282ebc-90f9-40d9-9756-2911699de32e",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a616d4e2-c580-4559-8069-bee18abbc856",
+              "leftValue": "={{ $json.body.payload.addition.bvid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        240
+      ],
+      "id": "7cb58969-86f7-42e9-bd28-bed45d6d1d1a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={\n    \"title\": {{ $json.body.payload.suggested_title }},\n    \"description\": {{ $json.body.payload.description}},\n    \"location\": {{ $json.body.payload.addition.bvid}},\n    \"pic\": \"{{ $json.body.payload.addition.coverImageUrl }}\",\n    \"level\": {{ $json.body.payload.difficulty_level }},\n    \"genre\": 1,\n    \"inSite\": 2,\n    \"skillId\": {{ $json.body.payload.primary_skills }},\n    \"addition\": {{ JSON.stringify($json.body.payload.addition,null,2) }}\n}",
+        "options": {}
+      },
+      "id": "c383d0b1-619b-4d75-afa7-87496b2b99d2",
+      "name": "1-1",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "position": [
+        352,
+        -48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -48
+      ],
+      "id": "3aee65ab-77d3-47d9-b78c-8638ec16b75f",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rEr4QKfc9fKcHID3",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "milvusCollection": {
+          "__rl": true,
+          "value": "recource_vector",
+          "mode": "list",
+          "cachedResultName": "recource_vector"
+        },
+        "options": {
+          "clearCollection": false
+        }
+      },
+      "id": "107bf9f6-c0f3-4669-82be-0076d2362821",
+      "name": "Milvus Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreMilvus",
+      "position": [
+        240,
+        -272
+      ],
+      "typeVersion": 1.1,
+      "credentials": {
+        "milvusApi": {
+          "id": "mMhNWBM1ScqYyxQ1",
+          "name": "Milvus account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chunkSize": 65535,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        448,
+        160
+      ],
+      "id": "710636c1-58d7-45c1-a6cd-1d204affb937",
+      "name": "Recursive Character Text Splitter"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "accept": "application/json, application/yaml, application/*+json",
+            "content-type": "application/json",
+            "root": "123456",
+            "user-agent": "Java/17.0.12",
+            "host": "10.7.10.203:5678",
+            "connection": "keep-alive",
+            "content-length": "1826"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "payload": {
+              "suggested_title": "产品经理竞品分析入门指南",
+              "description": "详细讲解产品经理如何进行竞品分析，包括数据来源、分析方法和报告撰写技巧",
+              "MainContent": "视频系统性地介绍了竞品分析的四个关键步骤：1)确定分析目标 2)选择竞品 3)收集数据 4)撰写报告。分享了多个实用的竞品数据网站资源，并提供了报告撰写模板。",
+              "url": "https://www.bilibili.com/video/BV1dT4y1L7Q8",
+              "difficulty_level": 2,
+              "primary_skills": [
+                "1",
+                "2",
+                "13"
+              ],
+              "addition": {
+                "bvid": "BV1dT4y1L7Q8",
+                "title": "【产品小白必看】4步助你快速输出惊艳老板的竞品分析报告｜竞品数据网站分享｜产品经理入门",
+                "description": "看到好多人想让我分享怎么自己在家做产品相关练习，那第一个就先跟大家分享一下产品经理最重要的一项技能——竞品分析，作为产品新人怎么系统地完整的做竞品分析？竞品数据都从哪里找？竞品分析报告都要写啥？\n产品视频不迷路★★★★★★★★★★★★★★★★★★  \n「产品经理平时都干啥？」BV1Kk4y1r7Qc \n「怎么投简历？」 BV1ZT4y1E7g7\n「怎么做作品集」 BV1NZ4y1u7xn",
+                "coverImageUrl": "https://i1.hdslb.com/bfs/archive/2ce522ff54495e177d5d67b42052a40a4449366e.jpg",
+                "authorName": "斯前想后来",
+                "category": "职业职场",
+                "playCount": 161671,
+                "favoriteCount": 14794,
+                "likeCount": 7415,
+                "danmakuCount": 220,
+                "publishTimestamp": 1595124651,
+                "durationInSeconds": 552,
+                "p": 1
+              },
+              "relevance_to_learning": {
+                "is_valuable": true,
+                "reason": "该视频针对产品经理核心技能竞品分析提供了系统性的教学指导，包含实用工具和模板，具有明确的学习价值"
+              }
+            },
+            "meta": {
+              "caller": "Learning-Center-API",
+              "requestId": "5b522168-03bd-40e5-b53f-f8677744e6f9",
+              "timestamp": 1755592855218
+            }
+          },
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/recoursevectort",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "1": {
+      "ai_document": [
+        [
+          {
+            "node": "Milvus Vector Store2",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter1": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "1",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Milvus Vector Store2",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Milvus Vector Store2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Milvus Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Milvus Vector Store2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1-1": {
+      "ai_document": [
+        [
+          {
+            "node": "Milvus Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Milvus Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Milvus Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "1-1",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9e70a3ab-204f-4f2d-b8a1-9b83a217e835",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "yJTkkkXC5KCqPGYt",
+  "tags": []
+}

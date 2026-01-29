@@ -1,0 +1,757 @@
+{
+  "name": "哔哩哔哩ai筛选",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.body.payload.video, null, 2) }}\n{{ JSON.stringify($json.body.payload.skillMap, null, 2) }}",
+        "options": {
+          "systemMessage": "=// 🔴 Step 1: 获取并格式化输入数据\nconst videos = {{ JSON.stringify($json.body.payload.video, null, 2) }};\n// skillsList 应该是一个 key-value 对象，其中 key 是技能ID, value 是技能名称\nconst skillsList = {{ JSON.stringify($json.body.payload.skillMap, null, 2) }}; \n\nconst detailedPrompt = `## 角色与模式：进入“视频学习资源过滤与转换引擎”模式\n你是一个自动化的IT技术内容处理引擎。你的核心任务是**接收一个视频列表，严格应用过滤规则，然后只对通过筛选的视频进行结构化转换**。你的输出必须干净、精确，只包含符合条件的视频。\n\n## 核心指令：两步处理协议 (过滤 -> 转换)\n\n你必须严格遵循以下两步协议，这是你唯一的行为准则。\n\n### **第一步：遍历与无情过滤 (MANDATORY FILTERING)**\n对于“待分析的视频列表”中的 **每一个** 视频，你必须先进行【是/否】判断。\n\n**【过滤条件】如果一个视频满足以下【任一】条件，它就会被立即【舍弃】，绝不能进入第二步的处理：**\n1.  **无学习价值**: 根据其标题和描述，你判断它的教学意义不大，即 \\`is_valuable\\` 应为 \\`false\\`。例如，非技术分享、生活vlog、广告等。\n2.  **无技能匹配**: 它的内容与“可用技能列表”中的任何一项都无法建立强关联。\n\n### **第二步：转换与输出 (CONDITIONAL TRANSFORMATION)**\n- **只有在第一步中被判定为【通过】的视频**，才能被结构化处理。\n- 将所有处理后的、合格的视频结果收集到一个名为 \"videos\" 的数组中。\n- **如果没有任何视频通过第一步的筛选，你必须返回一个包含空数组的JSON：\\`{ \"videos\": [] }\\`。**\n\n---\n\n## 关键概念定义\n- **难度级别 (difficulty_level)**: 1 (理论概念), 2 (原理演示), 3 (简单应用), 4 (综合项目)。\n- **核心技能 (primary_skills)**: **必须从**“可用技能列表”中选择0-5个最相关的技能 **ID (即列表中的键)**。如果无法匹配任何技能，则该视频在**第一步就会被过滤掉**。\n- **学习价值评估 (relevance_to_learning)**:\n    - **is_valuable**: \\`true\\` (教学性质), \\`false\\` (非教学性质)。如果为 \\`false\\`，则该视频在**第一步就会被过滤掉**。\n    - **reason**: 30-50字简述理由。\n- **URL构建**: 视频的URL必须根据 \\`bvid\\` 构建，格式为 \\`https://www.bilibili.com/video/\\${bvid}\\`。\n\n---\n\n## 输入数据\n\n### 待分析的视频列表 (JSON数组)\n${videos}\n\n### 可用技能列表 (一个以技能ID为键，技能名称为值的对象)\n${skillsList}\n\n---\n\n## 最终输出：严格的JSON格式\n\n- **警告：你的最终输出必须是且只能是一个可被解析的JSON对象。**\n- **禁止任何JSON对象之外的文字、注释、或Markdown标记。**\n- **\"videos\"数组中只允许包含通过了第一步【过滤】的视频。**\n- **结构模板 (这是一个包含两个结果的占位符示例，假设其他视频在第一步被舍弃了):**\n\n\\`\\`\\`json\n{\n  \"videos\": [\n    {\n      \"suggested_title\": \"第一篇合格视频的精炼标题\",\n      \"description\": \"对第一篇合格视频内容的简洁、吸引人的描述\",\n      \"MainContent\": \"对第一篇合格视频核心教学要点的提炼总结\",\n      \"url\": \"https://www.bilibili.com/video/合格视频的bvid\",\n      \"difficulty_level\": 2,\n      \"primary_skills\": [\"skill_id_1\", \"skill_id_2\"],\n      \"addition\": {\n        /* 第一个合格视频的完整原始JSON数据 */\n      },\n      \"relevance_to_learning\": {\n        \"is_valuable\": true,\n        \"reason\": \"解释为什么这个视频具有学习价值（30-50字）\"\n      }\n    },\n    {\n      \"suggested_title\": \"第二篇合格视频的精炼标题\",\n      \"description\": \"对第二篇合格视频内容的简洁、吸引人的描述\",\n      \"MainContent\": \"对第二篇合格视频核心教学要点的提炼总结\",\n      \"url\": \"https://www.bilibili.com/video/另一个合格视频的bvid\",\n      \"difficulty_level\": 4,\n      \"primary_skills\": [\"skill_id_3\", \"skill_id_4\", \"skill_id_5\"],\n      \"addition\": {\n        /* 第二个合格视频的完整原始JSON数据 */\n      },\n      \"relevance_to_learning\": {\n        \"is_valuable\": true,\n        \"reason\": \"解释为什么这个视频具有学习价值（30-50字）\"\n      }\n    }\n  ]\n}\n\\`\\`\\`\n`;\n\nreturn detailedPrompt;"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -32
+      ],
+      "id": "b46d7784-009d-4b01-aad3-7f5aa6c9aab7",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        144
+      ],
+      "id": "ec86f8e2-e358-40f1-a538-485788dee38c",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "PzntduMJthTLxbRd",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\nimport re\n\n# 1. 从上一个节点获取名为 \"output\" 的原始字符串\n# items[0].json['output'] 是n8n中Python节点获取上一个节点数据的标准方式\nraw_output = items[0].json.get('output', '')\n\n# 2. 健壮性检查：确保输入是字符串且不为空\nif not isinstance(raw_output, str) or not raw_output:\n    return {'error': 'Input data is missing or not a string.'}\n\n# 3. 核心清洗逻辑：使用正则表达式从文本中提取最外层的JSON对象\n# re.DOTALL 标志让 '.' 可以匹配包括换行符在内的任何字符\nmatch = re.search(r'\\{.*\\}', raw_output, re.DOTALL)\n\nif not match:\n    # 如果找不到匹配的JSON对象，返回错误\n    return {'error': 'Could not find a JSON object in the input string.', 'originalString': raw_output}\n\n# 提取匹配到的、看起来像JSON的字符串\ncleaned_json_string = match.group(0)\n\n# 4. 最终步骤：尝试解析清洗后的字符串为Python字典\ntry:\n    # json.loads() 是Python中用于将JSON字符串转换为字典的函数\n    parsed_json = json.loads(cleaned_json_string)\n    # n8n期望返回一个字典，它会自动处理成JSON输出\n    return parsed_json\nexcept json.JSONDecodeError as e:\n    # 如果解析失败，返回包含详细错误信息的字典，方便调试\n    return {\n        'error': 'Failed to parse JSON after cleaning. The JSON string is likely incomplete or malformed.',\n        'details': str(e),\n        'cleanedString': cleaned_json_string\n    }"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -48
+      ],
+      "id": "30f0f5c8-f698-4b61-90a4-9ba2b4919f23",
+      "name": "Code",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api/v1/learning-resource/BliblivideoSelect",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        -48
+      ],
+      "id": "bc618a39-b2cb-47c8-8392-759708ab34d4",
+      "name": "Webhook",
+      "webhookId": "2640b7c9-1492-47bc-851c-62e82c4d6545",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3OpbdSaTg1yNFBzm",
+          "name": "Hollow Knight"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        624,
+        -48
+      ],
+      "id": "eb0d34df-b579-45e3-91a3-1cbeb24fbe12",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 50201,\n  \"msg\": \"Upstream service error: BlogSelectAI service temporarily unavailable, please try again later.\",\n  \"data\": null\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        48
+      ],
+      "id": "21cc751f-7d86-4647-95e1-d5eaddd55f09",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"code\": 0,\n  \"msg\": \"success\",\n  \"data\": \n    {{ JSON.stringify($json.videos) }}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        -144
+      ],
+      "id": "b4b6d2e5-6373-4067-8f6c-156171be9ede",
+      "name": "Edit Fields1"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "root": "123456",
+            "user-agent": "Apifox/1.0.0 (https://apifox.com)",
+            "content-type": "application/json",
+            "accept": "*/*",
+            "host": "10.7.10.203:5678",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive",
+            "content-length": "10070"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "meta": {
+              "requestId": "c7a7e7e3-1c7b-4b1f-8e4a-2b7c4b1d8f1a",
+              "timestamp": 1678886400000,
+              "caller": "Learning-Platform-Service"
+            },
+            "payload": {
+              "video": {
+                "bvid": "BV1yY8BzuENA",
+                "p": 1,
+                "title": "n8n免费云端部署教程，无需信用卡，步骤简单",
+                "description": "公众号 【码里奥】\n本地部署n8n非常容易，但是部署在本地，不仅占用资源，而且没有办法把工作流共享给其他的小伙伴。云端部署呢又需要租服务器，但是不用担心，今天，我会教大家，如何在云端免费部署n8n，并且和其他视频教程不同的是，这个方法不需要提供任何信用卡信息就可以搭建。\n\n你只需要免费注册一下hugging face和supabase的账号即可",
+                "coverImageUrl": "https://i2.hdslb.com/bfs/archive/d825784eccd1620a607bb06a030bd6635c897124.jpg",
+                "authorName": "码里奥Ziho",
+                "category": "计算机技术",
+                "playCount": 489,
+                "favoriteCount": 41,
+                "likeCount": 22,
+                "danmakuCount": 0,
+                "publishTimestamp": 1753876546,
+                "durationInSeconds": 386
+              },
+              "skillMap": [
+                {
+                  "id": "1",
+                  "title": "竞品分析"
+                },
+                {
+                  "id": "2",
+                  "title": "市场调研"
+                },
+                {
+                  "id": "3",
+                  "title": "用户访谈"
+                },
+                {
+                  "id": "4",
+                  "title": "问卷设计"
+                },
+                {
+                  "id": "5",
+                  "title": "用户画像"
+                },
+                {
+                  "id": "6",
+                  "title": "商业模式设计"
+                },
+                {
+                  "id": "7",
+                  "title": "产品路线图(Roadmap)规划"
+                },
+                {
+                  "id": "8",
+                  "title": "MVP定义"
+                },
+                {
+                  "id": "9",
+                  "title": "需求分析与管理"
+                },
+                {
+                  "id": "10",
+                  "title": "数据分析基础"
+                },
+                {
+                  "id": "11",
+                  "title": "A/B测试设计"
+                },
+                {
+                  "id": "12",
+                  "title": "关键指标(KPI/OKR)设定"
+                },
+                {
+                  "id": "13",
+                  "title": "行业数据解读"
+                },
+                {
+                  "id": "14",
+                  "title": "UI设计(Web/App)"
+                },
+                {
+                  "id": "15",
+                  "title": "设计规范(Design System)"
+                },
+                {
+                  "id": "16",
+                  "title": "图形设计"
+                },
+                {
+                  "id": "17",
+                  "title": "Figma/Sketch"
+                },
+                {
+                  "id": "18",
+                  "title": "信息架构"
+                },
+                {
+                  "id": "19",
+                  "title": "用户流程图"
+                },
+                {
+                  "id": "20",
+                  "title": "线框图"
+                },
+                {
+                  "id": "21",
+                  "title": "可用性测试"
+                },
+                {
+                  "id": "22",
+                  "title": "用户研究"
+                },
+                {
+                  "id": "23",
+                  "title": "3D建模(Blender/C4D)"
+                },
+                {
+                  "id": "24",
+                  "title": "材质与渲染"
+                },
+                {
+                  "id": "25",
+                  "title": "VR/AR场景设计"
+                },
+                {
+                  "id": "26",
+                  "title": "空间交互设计"
+                },
+                {
+                  "id": "27",
+                  "title": "After Effects"
+                },
+                {
+                  "id": "28",
+                  "title": "Lottie"
+                },
+                {
+                  "id": "29",
+                  "title": "交互动效"
+                },
+                {
+                  "id": "30",
+                  "title": "视觉特效(VFX)"
+                },
+                {
+                  "id": "31",
+                  "title": "HTML/CSS"
+                },
+                {
+                  "id": "32",
+                  "title": "JavaScript/TypeScript"
+                },
+                {
+                  "id": "33",
+                  "title": "React/Vue/Angular"
+                },
+                {
+                  "id": "34",
+                  "title": "Android (Kotlin/Java)"
+                },
+                {
+                  "id": "35",
+                  "title": "iOS (Swift/Objective-C)"
+                },
+                {
+                  "id": "36",
+                  "title": "React Native"
+                },
+                {
+                  "id": "37",
+                  "title": "Flutter"
+                },
+                {
+                  "id": "38",
+                  "title": "小程序开发"
+                },
+                {
+                  "id": "39",
+                  "title": "Qt (C++)"
+                },
+                {
+                  "id": "40",
+                  "title": "WPF/WinForms (.NET)"
+                },
+                {
+                  "id": "41",
+                  "title": "Cocoa (macOS)"
+                },
+                {
+                  "id": "42",
+                  "title": "Electron (基于Web技术)"
+                },
+                {
+                  "id": "43",
+                  "title": "Unity"
+                },
+                {
+                  "id": "44",
+                  "title": "Unreal Engine"
+                },
+                {
+                  "id": "45",
+                  "title": "WebGL/Three.js"
+                },
+                {
+                  "id": "46",
+                  "title": "图形学基础"
+                },
+                {
+                  "id": "47",
+                  "title": "Java"
+                },
+                {
+                  "id": "48",
+                  "title": "Go"
+                },
+                {
+                  "id": "49",
+                  "title": "Python"
+                },
+                {
+                  "id": "50",
+                  "title": "C#"
+                },
+                {
+                  "id": "51",
+                  "title": "PHP"
+                },
+                {
+                  "id": "52",
+                  "title": "Node.js"
+                },
+                {
+                  "id": "53",
+                  "title": "Rust"
+                },
+                {
+                  "id": "54",
+                  "title": "Spring Boot"
+                },
+                {
+                  "id": "55",
+                  "title": "Django/Flask"
+                },
+                {
+                  "id": "56",
+                  "title": "Express/Koa"
+                },
+                {
+                  "id": "57",
+                  "title": "Gin"
+                },
+                {
+                  "id": "58",
+                  "title": ".NET Core"
+                },
+                {
+                  "id": "59",
+                  "title": "MySQL/PostgreSQL"
+                },
+                {
+                  "id": "60",
+                  "title": "Redis"
+                },
+                {
+                  "id": "61",
+                  "title": "MongoDB"
+                },
+                {
+                  "id": "62",
+                  "title": "Elasticsearch"
+                },
+                {
+                  "id": "63",
+                  "title": "数据库设计与优化"
+                },
+                {
+                  "id": "64",
+                  "title": "RESTful API设计"
+                },
+                {
+                  "id": "65",
+                  "title": "GraphQL"
+                },
+                {
+                  "id": "66",
+                  "title": "gRPC"
+                },
+                {
+                  "id": "67",
+                  "title": "微服务架构"
+                },
+                {
+                  "id": "68",
+                  "title": "数据仓库/湖"
+                },
+                {
+                  "id": "69",
+                  "title": "ETL"
+                },
+                {
+                  "id": "70",
+                  "title": "Spark"
+                },
+                {
+                  "id": "71",
+                  "title": "Pandas"
+                },
+                {
+                  "id": "72",
+                  "title": "统计建模"
+                },
+                {
+                  "id": "73",
+                  "title": "TensorFlow/PyTorch"
+                },
+                {
+                  "id": "74",
+                  "title": "模型部署与监控"
+                },
+                {
+                  "id": "75",
+                  "title": "特征工程"
+                },
+                {
+                  "id": "76",
+                  "title": "计算机视觉(CV)"
+                },
+                {
+                  "id": "77",
+                  "title": "自然语言处理(NLP)"
+                },
+                {
+                  "id": "78",
+                  "title": "推荐系统"
+                },
+                {
+                  "id": "79",
+                  "title": "Prompt工程"
+                },
+                {
+                  "id": "80",
+                  "title": "RAG"
+                },
+                {
+                  "id": "81",
+                  "title": "Fine-tuning"
+                },
+                {
+                  "id": "82",
+                  "title": "多模态模型应用"
+                },
+                {
+                  "id": "83",
+                  "title": "LangChain/LlamaIndex"
+                },
+                {
+                  "id": "84",
+                  "title": "AutoGPT/BabyAGI概念"
+                },
+                {
+                  "id": "85",
+                  "title": "n8n/Zapier"
+                },
+                {
+                  "id": "86",
+                  "title": "智能体规划与执行"
+                },
+                {
+                  "id": "87",
+                  "title": "函数调用(Function Calling)"
+                },
+                {
+                  "id": "88",
+                  "title": "AWS/Azure/GCP"
+                },
+                {
+                  "id": "89",
+                  "title": "Docker"
+                },
+                {
+                  "id": "90",
+                  "title": "Kubernetes(K8s)"
+                },
+                {
+                  "id": "91",
+                  "title": "Serverless"
+                },
+                {
+                  "id": "92",
+                  "title": "CI/CD"
+                },
+                {
+                  "id": "93",
+                  "title": "Jenkins/GitLab CI"
+                },
+                {
+                  "id": "94",
+                  "title": "Prometheus/Grafana"
+                },
+                {
+                  "id": "95",
+                  "title": "基础设施即代码(IaC)"
+                },
+                {
+                  "id": "96",
+                  "title": "Web安全(OWASP)"
+                },
+                {
+                  "id": "97",
+                  "title": "渗透测试"
+                },
+                {
+                  "id": "98",
+                  "title": "数据加密"
+                },
+                {
+                  "id": "99",
+                  "title": "隐私计算"
+                },
+                {
+                  "id": "100",
+                  "title": "合规性(GDPR/CCPA)"
+                },
+                {
+                  "id": "101",
+                  "title": "测试用例设计"
+                },
+                {
+                  "id": "102",
+                  "title": "Bug跟踪与管理"
+                },
+                {
+                  "id": "103",
+                  "title": "探索性测试"
+                },
+                {
+                  "id": "104",
+                  "title": "Selenium/Cypress"
+                },
+                {
+                  "id": "105",
+                  "title": "Appium"
+                },
+                {
+                  "id": "106",
+                  "title": "JMeter"
+                },
+                {
+                  "id": "107",
+                  "title": "接口自动化"
+                },
+                {
+                  "id": "108",
+                  "title": "性能测试"
+                },
+                {
+                  "id": "109",
+                  "title": "测试框架开发"
+                },
+                {
+                  "id": "110",
+                  "title": "Mock/Stub技术"
+                },
+                {
+                  "id": "111",
+                  "title": "代码覆盖率分析"
+                },
+                {
+                  "id": "112",
+                  "title": "敏捷/Scrum/Kanban"
+                },
+                {
+                  "id": "113",
+                  "title": "项目管理工具(Jira/ClickUp)"
+                },
+                {
+                  "id": "114",
+                  "title": "风险管理"
+                },
+                {
+                  "id": "115",
+                  "title": "跨职能沟通"
+                },
+                {
+                  "id": "116",
+                  "title": "技术文档写作"
+                },
+                {
+                  "id": "117",
+                  "title": "演示与汇报"
+                },
+                {
+                  "id": "118",
+                  "title": "冲突解决"
+                },
+                {
+                  "id": "119",
+                  "title": "行业分析"
+                },
+                {
+                  "id": "120",
+                  "title": "成本与效益分析"
+                },
+                {
+                  "id": "121",
+                  "title": "供应链知识"
+                },
+                {
+                  "id": "122",
+                  "title": "批判性思维"
+                },
+                {
+                  "id": "123",
+                  "title": "终身学习能力"
+                },
+                {
+                  "id": "124",
+                  "title": "时间管理"
+                },
+                {
+                  "id": "125",
+                  "title": "领导力潜质"
+                }
+              ]
+            }
+          },
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/BliblivideoSelect",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c80650f5-31dc-444c-a3eb-cac1985b514b",
+  "meta": {
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "65xPuHrbi9KTj0Bd",
+  "tags": []
+}

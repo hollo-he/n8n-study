@@ -1,0 +1,1275 @@
+{
+  "name": "CompetencyProfile - Project",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// 获取输入数据 - 修正访问方式\nconst skillAssessments = $input.item ? $input.item.json.skillAssessments : [];\n// 如果Webhook节点有数据，则获取用户技能数据\nlet userData = [];\ntry {\n  userData = $('Webhook').item ? $('Webhook').item.json.body.eventLoad.eventData.skills : [];\n} catch (error) {\n  // 如果获取失败，使用空数组\n  console.log('获取用户数据失败，使用空数组', error.message);\n}\n\n// 确保userData是数组\nif (!Array.isArray(userData)) {\n  userData = [];\n}\n\n// 定义分数到等级的映射函数\nfunction getSkillLevel(score) {\n  if (score >= 90) return \"精通\";\n  if (score >= 80) return \"掌握\";\n  if (score >= 70) return \"熟练\";\n  if (score >= 50) return \"了解\";\n  return \"入门\";\n}\n\n// 创建技能ID到技能名称的映射\nconst skillIdToNameMap = {};\nif (Array.isArray(skillAssessments)) {\n  skillAssessments.forEach(assessment => {\n    if (assessment && assessment.skillId) {\n      skillIdToNameMap[assessment.skillId] = assessment.skillName;\n    }\n  });\n}\n\n// 遍历新的技能评估\nif (Array.isArray(skillAssessments)) {\n  skillAssessments.forEach(assessment => {\n    if (!assessment) return;\n    \n    const skillId = assessment.skillId;\n    const contribution = assessment.finalContribution;\n    \n    if (!skillId || contribution === undefined) return;\n    \n    // 查找用户是否已有该技能\n    const existingSkillIndex = userData.findIndex(skill => skill && skill.skill_id === skillId);\n    \n    if (existingSkillIndex >= 0) {\n      // 已有技能，更新分数\n      const currentScore = parseInt(userData[existingSkillIndex].score) || 0;\n      const newScore = Math.min(100, currentScore + parseInt(contribution)); // 确保分数不超过100\n      userData[existingSkillIndex].score = newScore;\n      userData[existingSkillIndex].level = getSkillLevel(newScore);\n    } else {\n      // 新技能，添加到用户技能列表\n      const newSkill = {\n        skill_id: skillId,\n        score: parseInt(contribution) || 0,\n        level: getSkillLevel(parseInt(contribution) || 0)\n      };\n      userData.push(newSkill);\n    }\n  });\n}\n\n// 返回更新后的用户数据\nreturn [{json: {skills: userData}}];\n"
+      },
+      "id": "bb329147-371f-4c2f-853d-55adaf479067",
+      "name": "更新技能分数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.body.eventLoad.eventData.projectDetail, null, 2) }}\n\n{{ JSON.stringify($json.body.eventLoad.eventData.skillMap, null, 2) }}",
+        "options": {
+          "systemMessage": "=角色 (Persona):\n你是一位资深的技术架构师与项目评估专家。你的任务是基于一份项目描述文档（以JSON格式提供），对该项目在文档层面所体现出的技术规划与设计能力进行客观、深入的评估。\n上下文 (Context):\n评估材料 (Source Document): 你的唯一评估依据是以下JSON数据，其中包含了项目描述、核心功能、技术架构和关联的职位要求。\n\nSource：{{ $json.body.eventLoad.eventData.projectDetail }}\n\n技能库 (Skill Universe): 你的评估必须从以下预定义的技能列表中选择。这是本次评估认可的技能范围。\nSkill Universe：{{ $json.body.eventLoad.eventData.skillMap }}\nGenerated json\n核心任务 (Your Task):\n分析给定的评估材料 (Source Document)，识别出其中得到充分论述或用实例证明的技能。仅仅被提及的术语（如projectPositions.skillRequirements中的简单罗列）不应获得高分，除非在项目描述中有相应的支撑。\n对于每项识别出的技能，从以下维度进行综合考量：\n论述深度 (Quality/Depth): 对技能应用的描述是否具体？是停留在概念层面（如“使用AI”），还是深入到具体实现（如“采用智能推荐算法”、“权限分级管理”）？\n架构复杂性 (Difficulty/Complexity): 项目描述中体现的架构是否复杂？（例如，“基于微服务架构”体现的复杂度高于未提及架构的项目）。\n商业价值关联 (Practical Application): 文档是否成功地将技术选择与业务目标联系起来？（例如，将技术突破与“实现运营成本降低30%”这样的预期成果挂钩）。\n输出要求 (Output Requirements):\n评估结果必须以单个JSON对象的格式返回。最多提取和评估5个证据最充分的技能。\nGenerated json\n{\n  \"skillAssessments\": [\n    {\n      \"skillId\": \"技能ID\",\n      \"skillName\": \"技能名称\",\n      \"aiWeight\": \"评分值\",\n      \"aiReason\": \"评估理由\"\n    }\n  ]\n}\nUse code with caution.\nJson\n评分标准 (Scoring Criteria):\naiWeight (浮点数, 1.0-2.0):\n1.0-1.3 (基础提及): 技能仅作为列表项或术语被提及，缺乏在项目中的具体作用描述。\n1.4-1.6 (良好阐述): 技能在文档中有具体的功能性描述，能看出其在项目中的实际用途。例如，“实时数据处理”的特性描述。\n1.7-1.9 (优秀论证): 技能被置于整体架构中讨论，并与具体的业务价值或量化指标明确关联，展现了系统性的设计思维。\n2.0 (卓越愿景): 文档不仅清晰论证了技术，还展现了其在行业内的创新性和前瞻性，体现了作者专家级的战略眼光。\naiReason (字符串, 不超过100字):\n必须概括评分的核心依据。\n必须引用评估材料中的短语作为证据，例如“依据‘项目采用基于微服务架构’的描述”或“提及‘智能推荐算法’并关联到核心功能”。\n核心原则 (Critical Rules):\n宁缺毋滥 (Quality over Quantity): 只评估那些在文档中有充分文字支持的技能。\n基于文本 (Text-based Evidence): 你的所有判断必须严格来自提供的JSON文本，禁止对项目进行任何外部联想或推断。\n区分“描述”与“罗列”: 对projectDetail.description中详细阐述的技能给予比projectPositions.skillRequirements中简单罗列的技能更高的评估权重。"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -1408,
+        336
+      ],
+      "id": "53c458f9-170c-49eb-ae33-7c9a715e25f9",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 提取并解析JSON数据\nconst outputContent = $input.first().json.output;\nconst jsonMatch = outputContent.match(/```json\\n([\\s\\S]*?)\\n```/);\nconst skillData = JSON.parse(jsonMatch[1]);\nconst skillAssessments = skillData.skillAssessments;\n\n// 清洗并格式化为JSON\nconst cleanedSkills = skillAssessments.map(skill => ({\n    skillId: skill.skillId,\n    skillName: skill.skillName,\n    aiWeight: skill.aiWeight,\n    aiReason: skill.aiReason\n}));\n\nreturn {\n    skillAssessments: cleanedSkills\n};\n"
+      },
+      "id": "fba7ddbd-7204-48f0-a166-e6d3f3d956ee",
+      "name": "清洗深度分析数据",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -1008,
+        336
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api/v1/learning-resource/Project",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2736,
+        528
+      ],
+      "id": "e275e863-e26d-47f7-9fe6-302cdedcb69f",
+      "name": "Webhook",
+      "webhookId": "f0d278b4-26f3-4fe6-82d2-dab3e0c91c39",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3OpbdSaTg1yNFBzm",
+          "name": "Hollow Knight"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        112,
+        560
+      ],
+      "id": "63a04ce3-4d9e-4046-9012-5f3654dc6819",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 循环处理输入项并为每个项添加一个名为'myNewField'的新字段\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n  \n  // 获取基础贡献分\n  const baseContribution = $input.first().json.baseContribution;\n  \n  // 处理技能评估列表\n  if (item.json.skillAssessments && Array.isArray(item.json.skillAssessments)) {\n    // 遍历每个技能评估\n    item.json.skillAssessments.forEach(assessment => {\n      // 为每个技能计算finalContribution\n      assessment.finalContribution = baseContribution * assessment.aiWeight;\n      \n      // 可以选择保留两位小数\n      assessment.finalContribution = Math.round(assessment.finalContribution * 100) / 100;\n    });\n  }\n}\n\nreturn $input.all();\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        240
+      ],
+      "id": "a6f5a932-e043-4265-a11c-a27e46da56f4",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f8ec501a-0c6d-4536-b744-55465d5147d8",
+              "name": "baseContribution",
+              "value": "20",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -784,
+        240
+      ],
+      "id": "1cc663ea-0917-4ba2-b86c-2000bd0a252e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"code\": 0,\n  \"msg\": \"success\",\n  \"data\": {\n    \"user_id\": {{ $('Webhook').item.json.body.eventLoad.eventData.user_id }},\n    \"skills\": {{ $json.skills }}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        240
+      ],
+      "id": "fe473c06-6806-4b1b-b04e-8e9739b42496",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4992f54d-97d3-4162-b3ac-ea48b0bbd1fa",
+              "leftValue": "={{ $json.body.eventLoad.eventData.skillMap }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "0bac7428-7e58-47d2-92ee-ffbe15cf7314",
+              "leftValue": "={{ $json.body.eventLoad.eventData.skillMap }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2512,
+        528
+      ],
+      "id": "ca2dd076-cbe3-4345-a4fb-6fe53f92c649",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'skillMap' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        1040
+      ],
+      "id": "8df328cc-f5da-43c1-8dc4-b1f69bade3ad",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2cbc4b69-c830-4143-b586-72ee446c3651",
+              "leftValue": "={{ $json.body.eventLoad.eventData.user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "5b487fda-d7ca-4ee0-8c33-ca7725cc44d0",
+              "leftValue": "={{ $json.body.eventLoad.eventData.user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2288,
+        432
+      ],
+      "id": "f872490d-71bb-41ca-8514-177a084f92da",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'user_id' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        848
+      ],
+      "id": "6010644e-fcb5-4951-8f3a-2ab70143f0a0",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3b1b149d-e9a0-4f9b-bc09-bbf6dfabb3df",
+              "leftValue": "={{ $json.body.eventLoad.eventData.skills }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2064,
+        336
+      ],
+      "id": "cb4a5b6e-4fc1-4022-84ac-58aa741c52d8",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'skills' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        656
+      ],
+      "id": "26508c7d-c67f-489c-b186-a2e7ff8be1c4",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b2667722-c4c7-426d-b8f4-7bc58279e1bf",
+              "leftValue": "={{ $json.body.eventLoad.eventData.projectDetail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "b2bd8a2c-35f4-4eb9-90e3-4dd06d52a001",
+              "leftValue": "={{ $json.body.eventLoad.eventData.projectDetail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1840,
+        208
+      ],
+      "id": "c1a8bb3f-a33d-413b-8b2e-6820ca9976b2",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 40001,\n  \"msg\": \"Request parameter error: 'interviewTranscript' field cannot be empty.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        16
+      ],
+      "id": "2a50e560-fc59-40af-9262-d24eeedf8196",
+      "name": "Edit Fields5"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"code\": 50201,\n  \"msg\": \"Upstream service error: Search term generation service temporarily unavailable, please try again later.\",\n  \"data\": null\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        432
+      ],
+      "id": "7f41135b-4265-4e2b-aad0-1ac4eaeea0cb",
+      "name": "Edit Fields6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d4ec6c66-6935-421e-91c7-b85be1cb7244",
+              "name": "body.eventLoad.eventData.skillMap",
+              "value": "={{ $json.body.eventLoad.eventData.skillMap }}",
+              "type": "string"
+            },
+            {
+              "id": "73836733-28ca-4520-b5f2-d1cf817883a3",
+              "name": "body.eventLoad.eventData.projectDetail",
+              "value": "={{ $json.body.eventLoad.eventData.projectDetail }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1648,
+        256
+      ],
+      "id": "e82d9eaa-7fe6-498b-994d-0027f1cdf379",
+      "name": "Edit Fields7"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1536,
+        640
+      ],
+      "id": "9f76061f-202e-41e4-9e84-70cc90193dc4",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rEr4QKfc9fKcHID3",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -1552,
+        544
+      ],
+      "id": "6d7aa870-4668-436e-95fa-59eda25afa82",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "PzntduMJthTLxbRd",
+          "name": "DeepSeek account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "root": "123456",
+            "user-agent": "Apifox/1.0.0 (https://apifox.com)",
+            "content-type": "application/json",
+            "accept": "*/*",
+            "host": "localhost:5678",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive",
+            "content-length": "10280"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "meta": {
+              "requestId": "c7a7e7e3-1c7b-4b1f-8e4a-2b7c4b1d8f1a",
+              "timestamp": 1678886400000,
+              "caller": "Learning-Platform-Service"
+            },
+            "eventLoad": {
+              "eventData": {
+                "skillMap": [
+                  {
+                    "id": "1",
+                    "title": "竞品分析"
+                  },
+                  {
+                    "id": "2",
+                    "title": "市场调研"
+                  },
+                  {
+                    "id": "3",
+                    "title": "用户访谈"
+                  },
+                  {
+                    "id": "4",
+                    "title": "问卷设计"
+                  },
+                  {
+                    "id": "5",
+                    "title": "用户画像"
+                  },
+                  {
+                    "id": "6",
+                    "title": "商业模式设计"
+                  },
+                  {
+                    "id": "7",
+                    "title": "产品路线图(Roadmap)规划"
+                  },
+                  {
+                    "id": "8",
+                    "title": "MVP定义"
+                  },
+                  {
+                    "id": "9",
+                    "title": "需求分析与管理"
+                  },
+                  {
+                    "id": "10",
+                    "title": "数据分析基础"
+                  },
+                  {
+                    "id": "11",
+                    "title": "A/B测试设计"
+                  },
+                  {
+                    "id": "12",
+                    "title": "关键指标(KPI/OKR)设定"
+                  },
+                  {
+                    "id": "13",
+                    "title": "行业数据解读"
+                  },
+                  {
+                    "id": "14",
+                    "title": "UI设计(Web/App)"
+                  },
+                  {
+                    "id": "15",
+                    "title": "设计规范(Design System)"
+                  },
+                  {
+                    "id": "16",
+                    "title": "图形设计"
+                  },
+                  {
+                    "id": "17",
+                    "title": "Figma/Sketch"
+                  },
+                  {
+                    "id": "18",
+                    "title": "信息架构"
+                  },
+                  {
+                    "id": "19",
+                    "title": "用户流程图"
+                  },
+                  {
+                    "id": "20",
+                    "title": "线框图"
+                  },
+                  {
+                    "id": "21",
+                    "title": "可用性测试"
+                  },
+                  {
+                    "id": "22",
+                    "title": "用户研究"
+                  },
+                  {
+                    "id": "23",
+                    "title": "3D建模(Blender/C4D)"
+                  },
+                  {
+                    "id": "24",
+                    "title": "材质与渲染"
+                  },
+                  {
+                    "id": "25",
+                    "title": "VR/AR场景设计"
+                  },
+                  {
+                    "id": "26",
+                    "title": "空间交互设计"
+                  },
+                  {
+                    "id": "27",
+                    "title": "After Effects"
+                  },
+                  {
+                    "id": "28",
+                    "title": "Lottie"
+                  },
+                  {
+                    "id": "29",
+                    "title": "交互动效"
+                  },
+                  {
+                    "id": "30",
+                    "title": "视觉特效(VFX)"
+                  },
+                  {
+                    "id": "31",
+                    "title": "HTML/CSS"
+                  },
+                  {
+                    "id": "32",
+                    "title": "JavaScript/TypeScript"
+                  },
+                  {
+                    "id": "33",
+                    "title": "React/Vue/Angular"
+                  },
+                  {
+                    "id": "34",
+                    "title": "Android (Kotlin/Java)"
+                  },
+                  {
+                    "id": "35",
+                    "title": "iOS (Swift/Objective-C)"
+                  },
+                  {
+                    "id": "36",
+                    "title": "React Native"
+                  },
+                  {
+                    "id": "37",
+                    "title": "Flutter"
+                  },
+                  {
+                    "id": "38",
+                    "title": "小程序开发"
+                  },
+                  {
+                    "id": "39",
+                    "title": "Qt (C++)"
+                  },
+                  {
+                    "id": "40",
+                    "title": "WPF/WinForms (.NET)"
+                  },
+                  {
+                    "id": "41",
+                    "title": "Cocoa (macOS)"
+                  },
+                  {
+                    "id": "42",
+                    "title": "Electron (基于Web技术)"
+                  },
+                  {
+                    "id": "43",
+                    "title": "Unity"
+                  },
+                  {
+                    "id": "44",
+                    "title": "Unreal Engine"
+                  },
+                  {
+                    "id": "45",
+                    "title": "WebGL/Three.js"
+                  },
+                  {
+                    "id": "46",
+                    "title": "图形学基础"
+                  },
+                  {
+                    "id": "47",
+                    "title": "Java"
+                  },
+                  {
+                    "id": "48",
+                    "title": "Go"
+                  },
+                  {
+                    "id": "49",
+                    "title": "Python"
+                  },
+                  {
+                    "id": "50",
+                    "title": "C#"
+                  },
+                  {
+                    "id": "51",
+                    "title": "PHP"
+                  },
+                  {
+                    "id": "52",
+                    "title": "Node.js"
+                  },
+                  {
+                    "id": "53",
+                    "title": "Rust"
+                  },
+                  {
+                    "id": "54",
+                    "title": "Spring Boot"
+                  },
+                  {
+                    "id": "55",
+                    "title": "Django/Flask"
+                  },
+                  {
+                    "id": "56",
+                    "title": "Express/Koa"
+                  },
+                  {
+                    "id": "57",
+                    "title": "Gin"
+                  },
+                  {
+                    "id": "58",
+                    "title": ".NET Core"
+                  },
+                  {
+                    "id": "59",
+                    "title": "MySQL/PostgreSQL"
+                  },
+                  {
+                    "id": "60",
+                    "title": "Redis"
+                  },
+                  {
+                    "id": "61",
+                    "title": "MongoDB"
+                  },
+                  {
+                    "id": "62",
+                    "title": "Elasticsearch"
+                  },
+                  {
+                    "id": "63",
+                    "title": "数据库设计与优化"
+                  },
+                  {
+                    "id": "64",
+                    "title": "RESTful API设计"
+                  },
+                  {
+                    "id": "65",
+                    "title": "GraphQL"
+                  },
+                  {
+                    "id": "66",
+                    "title": "gRPC"
+                  },
+                  {
+                    "id": "67",
+                    "title": "微服务架构"
+                  },
+                  {
+                    "id": "68",
+                    "title": "数据仓库/湖"
+                  },
+                  {
+                    "id": "69",
+                    "title": "ETL"
+                  },
+                  {
+                    "id": "70",
+                    "title": "Spark"
+                  },
+                  {
+                    "id": "71",
+                    "title": "Pandas"
+                  },
+                  {
+                    "id": "72",
+                    "title": "统计建模"
+                  },
+                  {
+                    "id": "73",
+                    "title": "TensorFlow/PyTorch"
+                  },
+                  {
+                    "id": "74",
+                    "title": "模型部署与监控"
+                  },
+                  {
+                    "id": "75",
+                    "title": "特征工程"
+                  },
+                  {
+                    "id": "76",
+                    "title": "计算机视觉(CV)"
+                  },
+                  {
+                    "id": "77",
+                    "title": "自然语言处理(NLP)"
+                  },
+                  {
+                    "id": "78",
+                    "title": "推荐系统"
+                  },
+                  {
+                    "id": "79",
+                    "title": "Prompt工程"
+                  },
+                  {
+                    "id": "80",
+                    "title": "RAG"
+                  },
+                  {
+                    "id": "81",
+                    "title": "Fine-tuning"
+                  },
+                  {
+                    "id": "82",
+                    "title": "多模态模型应用"
+                  },
+                  {
+                    "id": "83",
+                    "title": "LangChain/LlamaIndex"
+                  },
+                  {
+                    "id": "84",
+                    "title": "AutoGPT/BabyAGI概念"
+                  },
+                  {
+                    "id": "85",
+                    "title": "n8n/Zapier"
+                  },
+                  {
+                    "id": "86",
+                    "title": "智能体规划与执行"
+                  },
+                  {
+                    "id": "87",
+                    "title": "函数调用(Function Calling)"
+                  },
+                  {
+                    "id": "88",
+                    "title": "AWS/Azure/GCP"
+                  },
+                  {
+                    "id": "89",
+                    "title": "Docker"
+                  },
+                  {
+                    "id": "90",
+                    "title": "Kubernetes(K8s)"
+                  },
+                  {
+                    "id": "91",
+                    "title": "Serverless"
+                  },
+                  {
+                    "id": "92",
+                    "title": "CI/CD"
+                  },
+                  {
+                    "id": "93",
+                    "title": "Jenkins/GitLab CI"
+                  },
+                  {
+                    "id": "94",
+                    "title": "Prometheus/Grafana"
+                  },
+                  {
+                    "id": "95",
+                    "title": "基础设施即代码(IaC)"
+                  },
+                  {
+                    "id": "96",
+                    "title": "Web安全(OWASP)"
+                  },
+                  {
+                    "id": "97",
+                    "title": "渗透测试"
+                  },
+                  {
+                    "id": "98",
+                    "title": "数据加密"
+                  },
+                  {
+                    "id": "99",
+                    "title": "隐私计算"
+                  },
+                  {
+                    "id": "100",
+                    "title": "合规性(GDPR/CCPA)"
+                  },
+                  {
+                    "id": "101",
+                    "title": "测试用例设计"
+                  },
+                  {
+                    "id": "102",
+                    "title": "Bug跟踪与管理"
+                  },
+                  {
+                    "id": "103",
+                    "title": "探索性测试"
+                  },
+                  {
+                    "id": "104",
+                    "title": "Selenium/Cypress"
+                  },
+                  {
+                    "id": "105",
+                    "title": "Appium"
+                  },
+                  {
+                    "id": "106",
+                    "title": "JMeter"
+                  },
+                  {
+                    "id": "107",
+                    "title": "接口自动化"
+                  },
+                  {
+                    "id": "108",
+                    "title": "性能测试"
+                  },
+                  {
+                    "id": "109",
+                    "title": "测试框架开发"
+                  },
+                  {
+                    "id": "110",
+                    "title": "Mock/Stub技术"
+                  },
+                  {
+                    "id": "111",
+                    "title": "代码覆盖率分析"
+                  },
+                  {
+                    "id": "112",
+                    "title": "敏捷/Scrum/Kanban"
+                  },
+                  {
+                    "id": "113",
+                    "title": "项目管理工具(Jira/ClickUp)"
+                  },
+                  {
+                    "id": "114",
+                    "title": "风险管理"
+                  },
+                  {
+                    "id": "115",
+                    "title": "跨职能沟通"
+                  },
+                  {
+                    "id": "116",
+                    "title": "技术文档写作"
+                  },
+                  {
+                    "id": "117",
+                    "title": "演示与汇报"
+                  },
+                  {
+                    "id": "118",
+                    "title": "冲突解决"
+                  },
+                  {
+                    "id": "119",
+                    "title": "行业分析"
+                  },
+                  {
+                    "id": "120",
+                    "title": "成本与效益分析"
+                  },
+                  {
+                    "id": "121",
+                    "title": "供应链知识"
+                  },
+                  {
+                    "id": "122",
+                    "title": "批判性思维"
+                  },
+                  {
+                    "id": "123",
+                    "title": "终身学习能力"
+                  },
+                  {
+                    "id": "124",
+                    "title": "时间管理"
+                  },
+                  {
+                    "id": "125",
+                    "title": "领导力潜质"
+                  }
+                ],
+                "user_id": 1001,
+                "skills": [
+                  {
+                    "skill_id": 101,
+                    "score": 85,
+                    "level": "掌握"
+                  },
+                  {
+                    "skill_id": 102,
+                    "score": 72,
+                    "level": "熟练"
+                  },
+                  {
+                    "skill_id": 103,
+                    "score": 60,
+                    "level": "了解"
+                  }
+                ],
+                "projectDetail": {
+                  "projectId": "6efeedb3-d206-46df-a1dd-abd8171c7fd9",
+                  "conversationId": "1947194413224488962",
+                  "projectName": "学生作业管理系统",
+                  "projectDesc": "智能化项目需求说明书核心内容。",
+                  "description": "# 项目详情摘要\n\n## 一、项目背景与意义\n**立项原因**：市场对智能化管理工具的需求不断增长，企业在数据处理和决策支持方面面临挑战。  \n**战略价值**：本项目将提升业务运营效率，改善用户体验，推动技术创新。  \n**目标用户**：主要面向中小企业管理人员及数据分析师。\n\n## 二、核心功能\n1. 主模块A\n   - 子功能A1\n     - 特性：实时数据处理\n     - 特性：多格式导出\n   - 子功能A2\n     - 特性：智能推荐算法\n2. 主模块B\n   - 子功能B1\n     - 特性：权限分级管理\n\n## 三、开发意义\n**技术突破**：项目采用基于微服务架构，集成智能分析算法。  \n**行业影响**：推动行业数字化转型，优化业务流程效率。  \n**预期成果**：实现运营成本降低30%，用户满意度提升至95%。",
+                  "projectDuration": "6个月",
+                  "status": "NOT_STARTED",
+                  "recruitIntro": "加入我们，共同打造未来！我们的项目致力于通过创新科技解决社会痛点，提升生活质量。我们追求卓越，倡导团队合作，欢迎充满激情与创意的技术精英加入。无论你是擅长人工智能、大数据，还是前端开发，我们期待你的独特视角与技能来推动项目进步。一起实现科技与人文的完美结合，让我们的创新成果惠及更多人。你将不仅仅是团队的一员，更是改变世界的推动者！立即加入我们，共创辉煌未来！",
+                  "recruitInvIntro": "我们诚邀您的合作，共同开拓市场空白的智能健康管理领域。我们的项目依托于独特的AI技术，实现精准健康监测和个性化服务，填补了现有市场的空缺。根据市场研究，未来五年，智能健康市场预计将以20%的年复合增长率迅速扩张。投资于本项目，将享有丰厚的股权回报与持续的利润分成。我们坚信，通过合作，您将不仅获得可观的投资回报，更将为推动社会健康管理的进步贡献力量。加入我们，共创美好未来！",
+                  "image": "http://10.7.10.154:9000/aip/2025/07/17/56df76b9d93b42f4ab98cb0350421d88.jpg",
+                  "createBy": 1,
+                  "loginIp": "10.7.10.120",
+                  "createDept": null
+                },
+                "projectPositions": {
+                  "positionId": "a855c43d-8c26-4461-909a-1eb5f202bcf4",
+                  "positionName": "测试工程师",
+                  "projectId": "6efeedb3-d206-46df-a1dd-abd8171c7fd9",
+                  "recruitmentCount": 1,
+                  "skillRequirements": "Selenium, Python, API Testing",
+                  "createDept": null,
+                  "updateBy": null
+                }
+              }
+            }
+          },
+          "webhookUrl": "http://localhost:5678/webhook/api/v1/learning-resource/PROGRAM",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "更新技能分数": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "清洗深度分析数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "清洗深度分析数据": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "更新技能分数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields7",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields6": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields7": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5898f638-2fe7-4067-bd4e-560b4bb1a488",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f20e4a9b84cf8634965bffd203a040709c991e2d3fae59cd033f553a5515944"
+  },
+  "id": "cJl5gIXZZAFD0ruz",
+  "tags": []
+}
